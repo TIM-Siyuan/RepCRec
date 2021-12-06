@@ -11,6 +11,7 @@ class FileLoader(object):
                 if line.startswith("==="):
                     break
                 if not line.startswith("//"):
+                    line.replace(' ', '')
                     self.lines.append(line.strip())
 
     # operation_type, Tid, vid, value, sid, time
@@ -38,7 +39,7 @@ class FileLoader(object):
                 line = line.replace(')', '')
                 values = line.split(",")
                 values[0] = (values[0])[1:]
-                values[1] = (values[1])[1:]
+                values[1] = (values[1]).split("x")[1]
                 op = operation(operation_type.WRITE, int(values[0]), int(values[1]), int(values[2]), None, time)
                 self.operations.append(op)
                 time += 1
@@ -48,7 +49,7 @@ class FileLoader(object):
                 line = line.replace(')', '')
                 values = line.split(",")
                 values[0] = (values[0])[1:]
-                values[1] = (values[1])[1:]
+                values[1] = (values[1]).split("x")[1]
                 op = operation(operation_type.READ, int(values[0]), int(values[1]), None, None, time)
                 self.operations.append(op)
                 time += 1
