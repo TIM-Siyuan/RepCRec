@@ -1,7 +1,7 @@
 from src.models.enum import LockType
 
 
-class LockManager(object):
+class LockManager:
 
     def __init__(self):
         self.lock_tables = {}
