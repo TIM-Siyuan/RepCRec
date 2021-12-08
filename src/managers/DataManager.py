@@ -2,15 +2,17 @@ from src.models.enum import DataType
 from src.models.DataCopy import DataCopy
 
 
+
 class DataManager(object):
     def __init__(self, site_id):
         self.site_id = site_id
         self.datacopies = {}
         for i in range(20):
             if i % 2 == 0:
-                self.datacopies[i] = DataCopy(DataType.REPLICATED, i)
+                self.datacopies[i] = DataCopy(DataType.REPLICATED, 10*i)
             if i % 2 == 1 and i % 10 + 1 == self.site_id:
-                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, i)
+                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, 10*i)
+
 
     def isAvailable(self, vid):
         return (self.datacopies.get(vid)).read_available
@@ -26,6 +28,7 @@ class DataManager(object):
     def fail(self):
         for key, value in self.datacopies.items():
             value.setReadAvailable(False)
+
 
     def commit(self, time, new_vids):
         for key, value in new_vids.item():

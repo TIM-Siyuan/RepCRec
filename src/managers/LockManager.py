@@ -31,7 +31,6 @@ class LockManager(object):
 
         return conflict_list
 
-
     def releaseWriteLock(self, tid, vid, is_holding_read_lock):
         lock_list = self.lock_tables[vid]
         if tid in lock_list:
@@ -40,7 +39,6 @@ class LockManager(object):
         self.lock_tables[vid] = lock_list
         if is_holding_read_lock:
             self.addLock(LockType.READ, tid, vid)
-
 
     def releaseAllLocks(self, tid):
         for vid in self.lock_tables.keys():
@@ -64,7 +62,7 @@ class LockManager(object):
         if tid not in self.lock_tables:
             return False
 
-        if lock_list[tid] == LockType.READ and lock_type == LockType.WRITE
+        if lock_list[tid] == LockType.READ and lock_type == LockType.WRITE:
             return False
 
         return True
