@@ -37,7 +37,7 @@ class DataManager(object):
 
     #getSnapshot
     def getSnapshot(self, vid, timestamp):
-        datacopy = self.datacopies.get(vid);
+        datacopy = self.datacopies.get(vid)
         commits = datacopy.getCommitHistory()
         for commit in commits:
             if commit[0] < timestamp:

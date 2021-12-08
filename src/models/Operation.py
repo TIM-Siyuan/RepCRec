@@ -8,3 +8,17 @@ class Operation(object):
         self.sid = sid
         self.time = time
 
+    def getType(self):
+        return self.type
+
+    def getTid(self):
+        return self.tid
+
+    def getvid(self):
+        return self.vid
+
+    def getValuetoWrite(self):
+        return self.value
+
+    def getArrivingTime(self):
+        return self.time
