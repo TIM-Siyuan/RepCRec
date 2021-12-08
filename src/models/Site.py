@@ -16,7 +16,7 @@ class Site(object):
         self.data_manager.dump()
 
     def isUP(self):
-        return SiteStatus == SiteStatus.UP
+        return self.STATUS == SiteStatus.UP
 
     def getDataManager(self):
         return self.data_manager
