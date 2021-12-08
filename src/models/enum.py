@@ -34,6 +34,7 @@ class LockType(Enum):
     WRITE = 2
 
 
-class data_type(Enum):
+
+class DataType(Enum):
     REPLICATED = 1
     NONREPLICATED = 2

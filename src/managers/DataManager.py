@@ -1,16 +1,18 @@
-from src.models.enum import data_type
+from src.models.enum import DataType
 from src.models.DataCopy import DataCopy
 
 
-class DataManager:
+
+class DataManager(object):
     def __init__(self, site_id):
         self.site_id = site_id
         self.datacopies = {}
         for i in range(20):
             if i % 2 == 0:
-                self.datacopies[i] = DataCopy(data_type.REPLICATED, 10*i)
+                self.datacopies[i] = DataCopy(DataType.REPLICATED, 10*i)
             if i % 2 == 1 and i % 10 + 1 == self.site_id:
-                self.datacopies[i] = DataCopy(data_type.NONREPLICATED, 10*i)
+                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, 10*i)
+
 
     def isAvailable(self, vid):
         return (self.datacopies.get(vid)).read_available
@@ -20,17 +22,34 @@ class DataManager:
 
     def recover(self):
         for key, value in self.datacopies.items():
-            if value.getDataType() == data_type.NONREPLICATED:
-                value.setReadAvailable(True)
+           if value.getDataType() == DataType.NONREPLICATED:
+               value.setReadAvailable(True)
 
     def fail(self):
         for key, value in self.datacopies.items():
             value.setReadAvailable(False)
 
-    def commit(self, time, updatedvid):
-        for key, value in updatedvid.item():
+
+    def commit(self, time, new_vids):
+        for key, value in new_vids.item():
             self.datacopies.get(key).addCommitHistory(time, value)
             self.datacopies.get(key).setReadAvailable(True)
 
-    # getSnapshot
-    # dump
+    #getSnapshot
+    def getSnapshot(self, vid, timestamp):
+        datacopy = self.datacopies.get(vid);
+        commits = datacopy.getCommitHistory()
+        for commit in commits:
+            if commit[0] < timestamp:
+                snapshot = commit
+        return snapshot
+
+    #dump
+    def dump(self):
+        #dump site
+        return None
+
+
+
+
+
