@@ -2,7 +2,7 @@ from src.models.enum import DataType
 from src.models.DataCopy import DataCopy
 
 
-class DataManager(object):
+class DataManager:
     def __init__(self, site_id):
         self.site_id = site_id
         self.datacopies = {}
