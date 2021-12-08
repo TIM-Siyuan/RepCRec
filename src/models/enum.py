@@ -32,3 +32,8 @@ class OperationType(Enum):
 class LockType(Enum):
     READ = 1
     WRITE = 2
+
+
+class DataType(Enum):
+    REPLICATED = 1
+    NONREPLICATED = 2
