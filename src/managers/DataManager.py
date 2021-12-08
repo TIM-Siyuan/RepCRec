@@ -8,9 +8,10 @@ class DataManager:
         self.datacopies = {}
         for i in range(20):
             if i % 2 == 0:
-                self.datacopies[i] = DataCopy(DataType.REPLICATED, i)
+                self.datacopies[i] = DataCopy(DataType.REPLICATED, 10*i)
             if i % 2 == 1 and i % 10 + 1 == self.site_id:
-                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, i)
+                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, 10*i)
+
 
     def isAvailable(self, vid):
         return (self.datacopies.get(vid)).read_available
@@ -27,6 +28,7 @@ class DataManager:
         for key, value in self.datacopies.items():
             value.setReadAvailable(False)
 
+
     def commit(self, time, new_vids):
         for key, value in new_vids.item():
             self.datacopies.get(key).addCommitHistory(time, value)
@@ -34,7 +36,7 @@ class DataManager:
 
     #getSnapshot
     def getSnapshot(self, vid, timestamp):
-        datacopy = self.datacopies.get(vid);
+        datacopy = self.datacopies.get(vid)
         commits = datacopy.getCommitHistory()
         for commit in commits:
             if commit[0] < timestamp:
