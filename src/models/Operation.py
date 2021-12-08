@@ -1,8 +1,8 @@
-class operation:
+class Operation(object):
 
-    def __init__(self, operation_type, Tid, vid, value, sid, time):
+    def __init__(self, operation_type, tid, vid, value, sid, time):
         self.type = operation_type
-        self.Tid = Tid
+        self.tid = tid
         self.vid = vid
         self.value = value
         self.sid = sid
