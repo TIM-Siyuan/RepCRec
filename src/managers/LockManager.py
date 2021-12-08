@@ -17,12 +17,12 @@ class LockManager(object):
                     return conflict_list
 
             # acquire read lock successfully
-            addLock(lock_type, tid, vid)
+            self.addLock(lock_type, tid, vid)
             return
 
         # if acquire write lock successfully
         if len(lock_list) == 0 or (len(lock_list) == 1 and (tid in lock_list.keys())):
-            addLock(lock_type, tid, vid)
+            self.addLock(lock_type, tid, vid)
             return
 
         # acquire write lock failed
@@ -39,7 +39,7 @@ class LockManager(object):
 
         self.lock_tables[vid] = lock_list
         if is_holding_read_lock:
-            addLock(LockType.READ, tid, vid)
+            self.addLock(LockType.READ, tid, vid)
 
 
     def releaseAllLocks(self, tid):
