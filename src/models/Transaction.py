@@ -1,4 +1,5 @@
 from src.models.enum import LockType, TransactionType
+from src.models.enum import TransactionStatus
 
 
 class Transaction:
