@@ -1,24 +1,24 @@
 from enum import Enum
 
 
-class site_status(Enum):
+class SiteStatus(Enum):
     UP = 1
     DOWN = 2
 
 
-class transaction_type(Enum):
+class TransactionType(Enum):
     RO = 1
     RW = 2
 
 
-class transaction_status(Enum):
+class TransactionStatus(Enum):
     ACTIVE = 1
     BLOCKED = 2
     COMMITED = 3
     ABORTED = 4
 
 
-class operation_type(Enum):
+class OperationType(Enum):
     BEGIN = 1
     BEGINRO = 2
     WRITE = 3
@@ -29,6 +29,6 @@ class operation_type(Enum):
     END = 8
 
 
-class lock_type(Enum):
+class LockType(Enum):
     READ = 1
     WRITE = 2
