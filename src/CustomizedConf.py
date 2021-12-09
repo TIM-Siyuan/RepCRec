@@ -49,17 +49,7 @@ class OperationType(Enum):
     DUMP = 7
     END = 8
 
-
-OperatorType = {
-    "begin": 1,
-    "beginRO": 2,
-    "W": 3,
-    "R": 4,
-    "fail": 5,
-    "recover": 6,
-    "dump": 7,
-    "end": 8,
-}
-
 num_distinct_variables = 20
 num_sites = 10
+
+TABLE_HEADERS = ["Site"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]

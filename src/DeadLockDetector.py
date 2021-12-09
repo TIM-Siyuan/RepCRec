@@ -1,6 +1,7 @@
+from collections import defaultdict
 from src.model.Operation import Operation
 from src.CustomizedConf import OperationType
-from collections import defaultdict
+
 
 
 class DeadLockDetector:
@@ -48,8 +49,9 @@ class DeadLockDetector:
                     self.Trans_waitlist[tid] = waiting_ops
 
         # Add operation to the dictionary
-        operation_list.add(operation)
-        self.v_operation_dict[vid] = operation_list
+        s_operation_list = set(operation_list)
+        s_operation_list.add(operation)
+        self.v_operation_dict[vid] = s_operation_list
 
     #method get from geeksforgeeks.org to detect cycles
     def deadlock(self):

@@ -1,6 +1,4 @@
 import re
-from src.CustomizedConf import OperatorType
-
 
 class Operation:
     def __init__(self, operation_type, tid, vid, value, sid, time):

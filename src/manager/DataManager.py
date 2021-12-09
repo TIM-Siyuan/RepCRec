@@ -12,10 +12,7 @@ class DataManager:
         self.data = self.init_data(site_id)
 
     def set_variable(self, vid, val):
-        # if vid % 2 == 0:
         self.data[vid].set_value(val)
-        # else:
-        #     self.data[vid] = DataCopy(DataType.NONREPLICATED, val)
 
     def set_available(self, vid, availability):
         self.data[vid].set_read_available(availability)
@@ -57,12 +54,6 @@ class DataManager:
         """
         self.uncommitted_log.pop(tid, None)
 
-    # def clear_uncommitted_changes(self):
-    #     """
-    #     Reset log to empty after a site fail
-    #     :return: None
-    #     """
-
     def get_variable(self, vid):
         """
         Read the value of given variable
@@ -72,12 +63,7 @@ class DataManager:
         """
         return self.data[vid]
 
-    # def set_variable(self, vid, val):
-    #     self.data[vid] = DataCopy(vid, val)
-
-
-    @staticmethod
-    def init_data(site_id):
+    def init_data(self, site_id):
         data = {}
         for i in range(1, num_distinct_variables + 1):
             if i % 2 == 0:
@@ -88,17 +74,3 @@ class DataManager:
                 else:
                     data[i] = DataCopy(DataType.NONREPLICATED, None)
         return data
-
-    def disable_accessibility(self):
-        """
-        Change accessible flag to False after recover (Only for replicated variable), which means the non replicated
-        variables can be write and read any other variable can be write but can not be read before any write operation
-        commit on it
-
-        :return: None
-        """
-        for i in range(1, num_distinct_variables + 1):
-            if i % 2 != 0 and i % num_sites + 1 == self.site_id:
-                self.set_available(i, True)
-            else:
-                self.set_available(i, False)

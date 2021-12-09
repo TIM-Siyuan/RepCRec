@@ -30,10 +30,10 @@ class Site:
         :return: None
         """
         self.status = SiteStatus.DOWN
-        self.data_manager.uncommitted_log = {}
+        # self.data_manager.uncommitted_log = {}
         self.lock_manager.fail()
-        # self.data_manager.fail()
-        self.data_manager.disable_accessibility()
+        self.data_manager.fail()
+        # self.data_manager.disable_accessibility()
 
     def get_snapshot(self, time_stamp):
         """

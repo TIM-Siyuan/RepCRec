@@ -24,6 +24,7 @@ def run(operations):
 
     time_stamp = 0
     for operation in operations:
+        # time_stamp starts from 1
         time_stamp += 1
         transaction_manager.execute_operation(operation)
 
@@ -31,10 +32,7 @@ def run(operations):
         time_stamp += 1
         op = transaction_manager.waiting_list.pop(0)
         op.set_time(time_stamp)
-        is_succeed = transaction_manager.retry()
-        if not is_succeed:
-            # op = transaction_manager.waiting_list.pop(0)
-            print(f'The operation {op.get_type()} {op.get_tid()} failed')
+        transaction_manager.retry()
 
 
 def run_by_file(input, output):
@@ -56,9 +54,9 @@ def run_by_step():
     tick = 0
 
     while True:
-        command = input("RepCRec >: ")
+        command = input("RepCRec: ")
         try:
-            if command == "refresh":
+            if command == "restart":
                 trans_manager = TransactionManager()
                 tick = 0
             elif command == "<END>":
@@ -67,21 +65,14 @@ def run_by_step():
                     # tick += 1
                     trans_manager.retry()
 
-                    if cur_blocked_size == len(trans_manager.blocked):
-                        print("Following operation can not be executed, maybe the test case is not terminable:")
-                        for op in trans_manager.blocked:
-                            print(op)
-                        break
-
                 trans_manager = TransactionManager()
                 tick = 0
 
-            elif command == "quit":
-                print("bye")
+            elif command == "exit":
+                print("The program is exited.")
                 break
             else:
                 tick += 1
-
                 operation = FileLoader.parse_line(command, 1)
                 print(operation.get_type())
                 print(operation.get_tid())

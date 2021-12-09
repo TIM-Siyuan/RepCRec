@@ -2,12 +2,8 @@ from src.CustomizedConf import *
 from src.DeadLockDetector import *
 from src.model.Site import Site
 from src.model.Transaction import Transaction
-from src.utils.IOUtils import *
-from src.Exception import *
 from src.model.Operation import Operation
 from prettytable import PrettyTable
-
-TABLE_HEADERS = ["Site Name"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]
 
 
 class TransactionManager:
@@ -39,7 +35,6 @@ class TransactionManager:
         :param time_stamp:
         :return: None
         """
-
         # retry
         self.retry()
         is_succeed = self.assign_task(operations)
@@ -71,14 +66,14 @@ class TransactionManager:
         self.waiting_list = blocked_list
         self.waiting_trans = blocked_trans
 
-    def find_youngest_trans(self, trace):
+    def find_youngest_trans(self, cycle):
         """
         Find the youngest transaction
 
-        :param trace: The deadlock cycle
+        :param cycle: The deadlock cycle
         :return: The youngest transaction
         """
-        ages = [(tid, self.transactions[tid].time_stamp) for tid in trace]
+        ages = [(tid, self.transactions[tid].time_stamp) for tid in cycle]
         return sorted(ages, key=lambda x: -x[1])[0]
 
     def abort(self, tid, abort_type):
@@ -95,19 +90,10 @@ class TransactionManager:
 
         # Remove any blocked operation belongs to this transaction
         self.waiting_list = [op for op in self.waiting_list if op.get_tid != tid]
-
         # Remove transaction in wait for graph
         self.wait_for_graph.remove_transaction(tid)
-
         self.transactions.pop(tid)
-        if abort_type == AbortType.DEADLOCK:
-            print(f"Transaction {tid} aborted (deadlock)")
-        elif abort_type == AbortType.SITE_FAILURE:
-            print(f"Transaction {tid} aborted (site failure)")
-        elif abort_type == AbortType.NO_DATA_FOR_READ_ONLY:
-            print(f"Transaction {tid} aborted (read-only, no data available in sites to read)")
-        else:
-            raise ValueError(f"Unknown abort type: {abort_type}")
+        print(f"Transaction {tid} aborted")
 
     def assign_task(self, operation, is_retry=False):
         if OperationType.BEGIN == operation.get_type():
@@ -184,9 +170,10 @@ class TransactionManager:
                 site = self.sites[vid % num_sites]
                 if site.status == SiteStatus.UP and vid in site.snapshots[trans_time_stamp]:
                     rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
-                    print_result(headers, rows)
+                    print_table(headers, rows)
                     return True
                 else:
+                    print_result(["Transaction waits because of a site down"], [[tid]])
                     return False
             # 1.2: If xi is replicated then RO can read xi from site s if xi was committed
             # at s by some transaction T’ before RO began and s was up all the time
@@ -204,7 +191,7 @@ class TransactionManager:
                     elif trans_time_stamp in site.snapshots \
                             and vid in site.snapshots[trans_time_stamp]:
                         rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
-                        print_result(headers, rows)
+                        print_table(headers, rows)
                         return True
                 # No site has the variable in the snapshot
                 if not is_data_exist:
@@ -241,8 +228,12 @@ class TransactionManager:
                 logs = site.data_manager.uncommitted_log.get(tid, {})
                 logs[vid] = value
                 site.data_manager.uncommitted_log[tid] = logs
+                rows = [[f"{site.sid}"]]
+                header = ["Sites affected by a write"]
+                print_table(header, rows)
                 return True
             else:
+                print_table(["Transaction waits because of a site down"], [["T" + str(tid)]])
                 return False
         else:
             locked_sites = []
@@ -251,12 +242,17 @@ class TransactionManager:
                 if site.status == SiteStatus.UP:
                     if site.lock_manager.acquire_write_lock(tid, vid):
                         locked_sites.append(site)
+                        rows = [[f"{site.sid}"]]
+                        header = ["Sites affected by a write"]
+                        print_table(header, rows)
+
                     # release all locks added previously if it is conflicted
                     else:
                         for locked_site in locked_sites:
                             locked_site.lock_manager.release_lock(tid, vid)
+                        print_table(["Transaction wait because of lock conflict"], [[tid]])
                         return False
-            # execute write operation
+            # Execute write operation
             if locked_sites:
                 for locked_site in locked_sites:
                     logs = locked_site.data_manager.uncommitted_log.get(tid, {})
@@ -265,36 +261,12 @@ class TransactionManager:
                 return True
 
             # retry later if not available list now
+            print_result(["Transaction waits because of a site down"], [["T" + str(tid)]])
             return False
-        # return False
-
-        # locked_list = []
-        # # Try to lock all sites have given variable
-        # for site in self.generate_site_list(vid):
-        #     # check site status and append it to locked sites
-        #     if site.status == SiteStatus.UP \
-        #             and site.lock_manager.acquire_write_lock(tid, vid):
-        #         locked_list.append(site)
-        #     # release all locks added previously if it is conflicted
-        #     else:
-        #         for locked_site in locked_list:
-        #             locked_site.lock_manager.release_lock(tid, vid)
-        #         return False
-        #
-        # # execute write operation
-        # if locked_list:
-        #     for locked_site in locked_list:
-        #         logs = locked_site.data_manager.uncommitted_log.get(tid, {})
-        #         logs[vid] = value
-        #         locked_site.data_manager.uncommitted_log[tid] = logs
-        #     return True
-        #
-        # # retry later if not available list now
-        # return False
 
     def execute_dump(self):
         rows = [site.print_all_sites() for site in self.sites]
-        print_result(TABLE_HEADERS, rows)
+        print_table(TABLE_HEADERS, rows)
         return True
 
     def execute_fail(self, operation):
@@ -408,12 +380,13 @@ class TransactionManager:
         else:
             res = site.data_manager.get_variable(vid).get_value()
 
-        print_result(["Transaction", "Site", f"x{vid}"], [[tid, f"{site.sid}", res]])
+        print("Read variable as follows:")
+        print_table(["Transaction", "Site", f"x{vid}"], [[tid, f"{site.sid}", res]])
 
         return True
 
 
-def print_result(headers, rows):
+def print_table(headers, rows):
     """
     Print the query result using pretty table, only for dump operation now
 
