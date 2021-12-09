@@ -48,7 +48,7 @@ class TransactionManager:
 
         # detect deadlock and then abort the youngest transaction if deadlock happens
         if (OperationType.READ == operations.get_type()
-                or OperationType.WRITE == operations.get_type()) \
+            or OperationType.WRITE == operations.get_type()) \
                 and self.wait_for_graph.deadlock():
             trans = self.find_youngest_trans(self.wait_for_graph.getcycle())[0]
             self.abort(trans, AbortType.DEADLOCK)
@@ -233,29 +233,64 @@ class TransactionManager:
 
         tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
 
-        locked_list = []
-        # Try to lock all sites have given variable
-        for site in self.generate_site_list(vid):
-            # check site status and append it to locked sites
+        if vid % 2 != 0:
+            # site list start from 0, so the index should minus 1, from vid%10+1 to vid%10
+            site = self.sites[vid % num_sites]
             if site.status == SiteStatus.UP \
                     and site.lock_manager.acquire_write_lock(tid, vid):
-                locked_list.append(site)
-            # release all locks added previously if it is conflicted
-            else:
-                for locked_site in locked_list:
-                    locked_site.lock_manager.release_lock(tid, vid)
-                return False
-
-        # execute write operation
-        if locked_list:
-            for locked_site in locked_list:
-                logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+                logs = site.data_manager.uncommitted_log.get(tid, {})
                 logs[vid] = value
-                locked_site.data_manager.uncommitted_log[tid] = logs
-            return True
+                site.data_manager.uncommitted_log[tid] = logs
+                return True
+            else:
+                return False
+        else:
+            locked_sites = []
+            for site in self.sites:
+                # check site status and append it to locked sites
+                if site.status == SiteStatus.UP:
+                    if site.lock_manager.acquire_write_lock(tid, vid):
+                        locked_sites.append(site)
+                    # release all locks added previously if it is conflicted
+                    else:
+                        for locked_site in locked_sites:
+                            locked_site.lock_manager.release_lock(tid, vid)
+                        return False
+            # execute write operation
+            if locked_sites:
+                for locked_site in locked_sites:
+                    logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+                    logs[vid] = value
+                    locked_site.data_manager.uncommitted_log[tid] = logs
+                return True
 
-        # retry later if not available list now
-        return False
+            # retry later if not available list now
+            return False
+        # return False
+
+        # locked_list = []
+        # # Try to lock all sites have given variable
+        # for site in self.generate_site_list(vid):
+        #     # check site status and append it to locked sites
+        #     if site.status == SiteStatus.UP \
+        #             and site.lock_manager.acquire_write_lock(tid, vid):
+        #         locked_list.append(site)
+        #     # release all locks added previously if it is conflicted
+        #     else:
+        #         for locked_site in locked_list:
+        #             locked_site.lock_manager.release_lock(tid, vid)
+        #         return False
+        #
+        # # execute write operation
+        # if locked_list:
+        #     for locked_site in locked_list:
+        #         logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+        #         logs[vid] = value
+        #         locked_site.data_manager.uncommitted_log[tid] = logs
+        #     return True
+        #
+        # # retry later if not available list now
+        # return False
 
     def execute_dump(self):
         rows = [site.print_all_sites() for site in self.sites]

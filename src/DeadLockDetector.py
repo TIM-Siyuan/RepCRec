@@ -4,95 +4,56 @@ from collections import defaultdict
 
 
 class DeadLockDetector:
-    """
-    A simple implementation of wait-for graph for deadlock detection
-O
-    :param self.tm: TransactionManager
-    :param self.var_to_ops: A dictionary mapping variable id to a set of operations which want to access the variable
-    :param self.wait_for: A dictionary tracking the wait-for edges, key is the from point, value is a set of transactions
-    :param self.trace: A list contains a cycle in the wait-for graph if any circle exists
-    """
 
     def __init__(self, tm):
         self.tm = tm
-        # Key-Value pair, tracking the operations that access each variable, (variable id: set of operation)
-        # if a variable id does not exist, then no transaction access this variable
-        self.var_to_ops = {}
-
-        # key value pair, tracking the wait-for-edges, (trans_id: set of transaction)
-        self.wait_for = {}
-
-        # a list to track the circle in current execution,
-        # will be used to find the youngest transaction in the circle
-        self.trace = []
+        self.v_operation_dict = {}
+        self.Trans_waitlist = {}
 
     def add_operation(self, operation):
-        """
-        Add operation to self.var_to_ops dictionary, for example, if the operation want to access x1,
-        we add the operation in this way self.var_to_ops["x1"].add(operation)
-        Add new node in wait-for graph if the transactions does not exist
-        ReadOnly operation will be ignored
-        :param operation: Operation object
-        :return: None
-        """
         operation_type = operation.get_type()
-        if not (operation_type == OperationType.WRITE or operation_type == OperationType.READ):
-            return
 
         tid = operation.get_tid()
         if self.tm.transactions[tid].is_read_only():
             return
 
         vid = operation.get_vid()
-        # All the operation on that vid
-        operation_list = self.var_to_ops.get(vid, set())
-        # Read Operation
+        operation_list = self.v_operation_dict.get(vid, set())
+        # Read operation
         if operation_type == OperationType.READ:
-            # Check if previous operation of the same transaction operated on the same variable
-            # if so, no deadlock will be formed by adding this operation
             for op in operation_list:
                 if op.get_tid() == tid:
                     # Add operation to the dictionary
                     operation_list.add(operation)
-                    self.var_to_ops[vid] = operation_list
+                    self.v_operation_dict[vid] = operation_list
                     return
 
-            # for any operation which is on the same variable,
-            # if op is W and transaction id is different, then there should be a edge
-            # For example, op is W(T1, x1, 10), the operation to be added is R(T2, x1)
-            # then the edge is T2 -> T1
             for op in operation_list:
                 if op.get_type() == OperationType.WRITE and op.get_tid() != tid:
-                    waits = self.wait_for.get(tid, set())
-                    waits.add(op.get_tid())
-                    self.wait_for[tid] = waits
-        # Case 2: operation is W
+                    waiting_ops = self.Trans_waitlist.get(tid, set())
+                    waiting_ops.add(op.get_tid())
+                    self.Trans_waitlist[tid] = waiting_ops
+        # Write operation
         else:
-            # Check if previous operation of the same transaction operated on the same variable
-            # if so, no deadlock will be formed by adding this operation
             for op in operation_list:
-                if op.get_tid() == tid and op.get_type() == OperationType.WRITE:
-                    # Add operation to the dictionary
+                if op.get_tid() == tid and op.get_type == OperationType.WRITE:
                     operation_list.add(operation)
-                    self.var_to_ops[vid] = operation_list
+                    self.v_operation_dict[vid] = operation_list
                     return
 
-            # W operation will conflict with all other operation on the same variable
             for op in operation_list:
                 if op.get_tid() != tid and op.get_type() == OperationType.WRITE:
-                    waits = self.wait_for.get(tid, set())
-                    waits.add(op.get_tid())
-                    self.wait_for[tid] = waits
+                    waiting_ops = self.Trans_waitlist.get(tid, set())
+                    waiting_ops.add(op.get_tid())
+                    self.Trans_waitlist[tid] = waiting_ops
 
         # Add operation to the dictionary
         operation_list.add(operation)
-        self.var_to_ops[vid] = operation_list
+        self.v_operation_dict[vid] = operation_list
 
-
-
-
+    #method get from geeksforgeeks.org to detect cycles
     def deadlock(self):
-        graph = self.wait_for
+        graph = self.Trans_waitlist
         edge_list = []
         for key, values in graph.items():
             for value in values:
@@ -102,29 +63,24 @@ O
         for edge in edge_list:
             G.addEdge(edge[0], edge[1])
         if G.isCyclic() == 1:
-            self.trace=self.getcycle()
+            self.trace = self.getcycle()
             return True
         else:
             return False
 
-
+    # Remove the aborted transaction from deadlockdetector
     def remove_transaction(self, tid):
-        """
-        Remove wait-for node has the transaction_id, remove all operations belong to the transaction
-        Typically, this function will be called when a transaction has been aborted or has committed
-        :param tid: identifier of the transaction
-        :return: None
-        """
-        # Modify var_to_trans
-        for var, ops in self.var_to_ops.items():
-            ops = {op for op in ops if op.get_tid() != tid}
-            self.var_to_ops[var] = ops
+        for v, op_list in self.v_operation_dict.items():
+            new_op_list = []
+            for op in op_list:
+                if op.get_tid != tid:
+                    new_op_list.append(op)
+            self.v_operation_dict[v] = new_op_list
+        self.Trans_waitlist.pop(tid, None)
 
-        # Modify wait for graph, delete the node of given transaction id
-        self.wait_for.pop(tid, None)
-
+    # get the tids in the cycle
     def getcycle(self):
-        graph = self.wait_for
+        graph = self.Trans_waitlist
         edge_list = []
         for key, values in graph.items():
             for value in values:
@@ -146,10 +102,7 @@ O
             cycle.append(v)
         return cycle
 
-
-
-
-
+#graph class get from geeksforgeeks.org to detect cycles
 class Graph:
     def __init__(self, vertices):
         self.graph = defaultdict(list)
