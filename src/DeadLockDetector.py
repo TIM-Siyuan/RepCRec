@@ -1,3 +1,6 @@
+from src.models.operation import operation
+from src.CustomizedConf import OperationType
+
 
 class DeadLockDetector:
     """
@@ -34,65 +37,61 @@ class DeadLockDetector:
         :param operation: Operation object
         :return: None
         """
-        op_t = operation.get_op_t()
-        para = operation.get_parameters()
-
-        # Only add read and write operations
-        if not (op_t == "R" or op_t == "W"):
+        operation_type = operation.getType()
+        if not (operation_type == OperationType.WRITE or operation_type == OperationType.READ):
             return
 
-        trans_id, var_id = para[0], para[1]
-
-        # ignore the operation belongs to a readonly transaction
-        if self.tm.transactions[trans_id].is_readonly:
+        tid = operation.getTid()
+        if self.tm.transactions[tid].readonly():
             return
 
-        # Get all operations on the variable
-        ops = self.var_to_ops.get(var_id, set())
+        vid = operation.getvid()
+        #All the operation on that vid
+        operation_list = self.var_to_ops.get(vid, set())
 
-        # Case 1: operation is R
-        if op_t == "R":
+        # Read Operation
+        if operation_type == OperationType.READ:
             # Check if previous operation of the same transaction operated on the same variable
             # if so, no deadlock will be formed by adding this operation
-            for op in ops:
-                if op.get_parameters()[0] == trans_id:
+            for op in operation_list:
+                if op.getTid() == tid:
                     # Add operation to the dictionary
-                    ops.add(operation)
-                    self.var_to_ops[var_id] = ops
+                    operation_list.add(operation)
+                    self.var_to_ops[vid] = operation_list
                     return
 
             # for any operation which is on the same variable,
             # if op is W and transaction id is different, then there should be a edge
             # For example, op is W(T1, x1, 10), the operation to be added is R(T2, x1)
             # then the edge is T2 -> T1
-            for op in ops:
-                if op.get_op_t() == "W" and op.get_parameters()[0] != trans_id:
-                    waits = self.wait_for.get(trans_id, set())
-                    waits.add(op.get_parameters()[0])
-                    self.wait_for[trans_id] = waits
+            for op in operation_list:
+                if op.getType() == OperationType.WRITE and op.getTid() != tid:
+                    waits = self.wait_for.get(tid, set())
+                    waits.add(op.getTid)
+                    self.wait_for[tid] = waits
         # Case 2: operation is W
         else:
             # Check if previous operation of the same transaction operated on the same variable
             # if so, no deadlock will be formed by adding this operation
-            for op in ops:
-                if op.get_parameters()[0] == trans_id and op.get_op_t() == "W":
+            for op in operation_list:
+                if op.getTid() == tid and op.getType == OperationType.WRITE:
                     # Add operation to the dictionary
-                    ops.add(operation)
-                    self.var_to_ops[var_id] = ops
+                    operation_list.add(operation)
+                    self.var_to_ops[vid] = operation_list
                     return
 
             # W operation will conflict with all other operation on the same variable
-            for op in ops:
-                if op.get_parameters()[0] != trans_id:
-                    waits = self.wait_for.get(trans_id, set())
-                    waits.add(op.get_parameters()[0])
-                    self.wait_for[trans_id] = waits
+            for op in operation_list:
+                if op.getTid != tid:
+                    waits = self.wait_for.get(tid, set())
+                    waits.add(op.getTid)
+                    self.wait_for[tid] = waits
 
         # Add operation to the dictionary
-        ops.add(operation)
-        self.var_to_ops[var_id] = ops
+        operation_list.add(operation)
+        self.var_to_ops[vid] = operation_list
 
-    def _recursive_check(self, cur_node, target, visited, trace):
+    def recursive_check(self, cur_node, target, visited, trace):
         visited[cur_node] = True
 
         if cur_node not in self.wait_for:
@@ -107,7 +106,7 @@ class DeadLockDetector:
             elif neighbor not in visited:
                 continue
             elif not visited[neighbor]:
-                if self._recursive_check(neighbor, target, visited, trace):
+                if self.recursive_check(neighbor, target, visited, trace):
                     return True
 
         trace.pop(-1)
@@ -124,7 +123,7 @@ class DeadLockDetector:
 
         for target in nodes:
             visited = {node: False for node in nodes}
-            if self._recursive_check(target, target, visited, self.trace):
+            if self.recursive_check(target, target, visited, self.trace):
                 return True
         return False
 
@@ -138,23 +137,19 @@ class DeadLockDetector:
         """
         return self.trace
 
-    def remove_transaction(self, transaction_id):
+    def remove_transaction(self, tid):
         """
         Remove wait-for node has the transaction_id, remove all operations belong to the transaction
 
         Typically, this function will be called when a transaction has been aborted or has committed
 
-        :param transaction_id: identifier of the transaction
+        :param tid: identifier of the transaction
         :return: None
         """
         # Modify var_to_trans
         for var, ops in self.var_to_ops.items():
-            ops = {op for op in ops if op.get_parameters()[0] != transaction_id}
+            ops = {op for op in ops if op.get_parameters()[0] != tid}
             self.var_to_ops[var] = ops
 
         # Modify wait for graph, delete the node of given transaction id
-        self.wait_for.pop(transaction_id, None)
-
-
-
-
+        self.wait_for.pop(tid, None)

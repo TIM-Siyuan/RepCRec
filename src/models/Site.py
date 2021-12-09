@@ -1,5 +1,5 @@
-from src.manager.LockManager import LockManager
-from src.manager.DataManager import DataManager
+from src.managers.LockManager import LockManager
+from src.managers.DataManager import DataManager
 from src.CustomizedConf import SiteStatus
 
 

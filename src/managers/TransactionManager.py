@@ -1,7 +1,7 @@
 from src.CustomizedConf import *
 from src.DeadLockDetector import *
-from src.model.Site import Site
-from src.model.Transaction import Transaction
+from src.models.Site import Site
+from src.models.Transaction import Transaction
 from src.utils import IOUtils
 from src.Exception import *
 

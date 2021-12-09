@@ -1,5 +1,5 @@
 from src.CustomizedConf import *
-from src.model.DataCopy import DataCopy
+from src.models.DataCopy import DataCopy
 
 
 class DataManager:
