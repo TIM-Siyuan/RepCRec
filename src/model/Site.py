@@ -42,7 +42,7 @@ class Site:
         """
         available_data = {}
         for idx, d in enumerate(self.data_manager.data):
-            if d and self.data_manager.is_accessible[idx]:
+            if d and self.data_manager.is_available(idx):
                 available_data[idx + 1] = d
 
         self.snapshots[time_stamp] = deepcopy(available_data)

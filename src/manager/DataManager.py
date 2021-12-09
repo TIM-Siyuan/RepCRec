@@ -65,3 +65,11 @@ class DataManager:
     #     :return: None
     #     """
 
+    def get_variable(self, vid):
+        """
+        Read the value of given variable
+
+        :param vid: variable id
+        :return: value of the variable
+        """
+        return self.data[vid]

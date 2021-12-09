@@ -1,5 +1,5 @@
-from src.models.Operation import operation
-from src.models.enum import operation_type
+from src.model.Operation import operation
+from src.model.enum import operation_type
 from src.utils.IOUtils import FileLoader
 
 

@@ -4,22 +4,27 @@ from src.model.Site import Site
 from src.model.Transaction import Transaction
 from src.utils import IOUtils
 from src.Exception import *
-
+from src.model.Operation import Operation
 
 class TransactionManager:
     """
     The transaction manager distributes operation and hold the information of the entire simulation
+
+    :param self.transactions: A dict to store running transactions
+    :param self.wait_for_graph: A graph store the waiting sequence of operations to detect deadlock
+    :param self.waiting_list: A waiting list contains all blocked operations
+    :param self.waiting_trans: A waiting set store all waiting transactions
+    :param self.sites: A list store all sites
     """
 
     def __init__(self):
         self.transactions = {}
-        self.operations = []
         self.waiting_list = []
         self.waiting_trans = set()
         self.wait_for_graph = DeadLockDetector()
         self.sites = [Site(i) for i in range(1, num_sites + 1)]
 
-    def two_step_execute(self, operation, time_stamp):
+    def execute_operation(self, operation):
         """
         Process the new operation
 
@@ -29,39 +34,37 @@ class TransactionManager:
         """
 
         # retry
-        self.retry(time_stamp)
-        is_succeed = self.assign_task(operation, time_stamp)
+        self.retry()
+        is_succeed = self.assign_task(operation)
         if not is_succeed:
-            self.blocked.append(operation)
+            self.waiting_list.append(operation)
 
         # detect deadlock and then abort the youngest transaction if deadlock happens
-        if (OperationType.READ in operation or OperationType.WRITE in operation) \
-                and \
-                self.wait_for_graph.check_deadlock():
-            trans = self.get_youngest_transaction(self.wait_for_graph.get_trace())[0]
+        if (OperationType.READ in operation
+                or OperationType.WRITE in operation) \
+                and self.wait_for_graph.check_deadlock():
+            trans = self.find_youngest_trans(self.wait_for_graph.get_trace())[0]
             self.abort(trans, AbortType.DEADLOCK)
 
-    def retry(self, time_stamp):
+    def retry(self):
         """
-        retry blocked operations (update blocked operations and blocked transactions)
+        retry blocked operations
 
         :return: None
         """
-        op_b = []
-        tx_b = set()
+        blocked_list = []
+        blocked_trans = set()
         for op in self.waiting_list:
-            if not op.execute(time_stamp, self, True):
-                op_b.append(op)
-
-                if op.get_op_t() == "end" and op.get_parameters()[0] not in tx_b:
+            if not assign_task(op, True):
+                blocked_list.append(op)
+                if op.get_type() == OperationType.END and op.get_tid() not in blocked_trans:
                     continue
+                blocked_trans.add(op.get_tid())
 
-                tx_b.add(op.get_parameters()[0])
+        self.waiting_list = blocked_list
+        self.waiting_trans = blocked_trans
 
-        self.waiting_list = op_b
-        self.waiting_trans = tx_b
-
-    def get_youngest_transaction(self, trace):
+    def find_youngest_trans(self, trace):
         """
         Find the youngest transaction
 
@@ -71,16 +74,13 @@ class TransactionManager:
         ages = [(tid, self.transactions[tid].time_stamp) for tid in trace]
         return sorted(ages, key=lambda x: -x[1])[0]
 
-        # Abort given transaction
+    def abort(self, tid, abort_type):
+        """
+        Abort the transaction
         # Steps:
         #   1. release locks
         #   2. revert transaction changes
         #   3. delete transaction in TM
-
-    def abort(self, tid, abort_type):
-        """
-        Abort the transaction
-
         :param tid: transaction_id
         :param abort_type: abort reason
         :return: None
@@ -93,7 +93,7 @@ class TransactionManager:
         # Remove any blocked operation belongs to this transaction
         self.waiting_list = [op for op in self.waiting_list if op.get_parameters()[0] != tid]
 
-        # Remove transaction in wait graph
+        # Remove transaction in wait for graph
         self.wait_for_graph.remove_transaction(tid)
 
         self.transactions.pop(tid)
@@ -106,32 +106,25 @@ class TransactionManager:
         else:
             raise ValueError(f"Unknown abort type: {abort_type}")
 
-    def assign_task(self, operation, time_stamp):
-        if OperationType.BEGIN in operation:
-            operand = operation[OperationType.BEGIN]
-            return self.execute_begin(operand, time_stamp)
-        elif OperationType.BEGINRO in operation:
-            operand = operation[OperationType.BEGINRO]
-            return self.execute_begin_read_only(operand, time_stamp)
-        elif OperationType.WRITE in operation:
-            operand = operation[OperationType.WRITE]
-            return self.execute_write(operand, time_stamp)
-        elif OperationType.READ in operation:
-            operand = operation[OperationType.READ]
-            return self.execute_read(operand, time_stamp)
-        elif OperationType.RECOVER in operation:
-            operand = operation[OperationType.RECOVER]
-            return self.execute_recover(operand)
-        elif OperationType.FAIL in operation:
-            operand = operation[OperationType.FAIL]
-            return self.execute_fail(operand)
-        elif OperationType.DUMP in operation:
+    def assign_task(self, operation, is_retry=False):
+        if OperationType.BEGIN == operation.get_type():
+            return self.execute_begin(operation)
+        elif OperationType.BEGINRO == operation.get_type():
+            return self.execute_begin_read_only(operation)
+        elif OperationType.WRITE == operation.get_type():
+            return self.execute_write(operation, is_retry)
+        elif OperationType.READ == operation.get_type():
+            return self.execute_read(operation, is_retry)
+        elif OperationType.RECOVER == operation.get_type():
+            return self.execute_recover(operation)
+        elif OperationType.FAIL == operation.get_type():
+            return self.execute_fail()
+        elif OperationType.DUMP == operation.get_type():
             return self.execute_dump()
-        elif OperationType.END in operation:
-            operand = operation[OperationType.END]
-            return self.execute_end(operand, time_stamp)
+        elif OperationType.END == operation.get_type():
+            return self.execute_end(operation, is_retry)
 
-    def execute_begin(self, operand, time_stamp):
+    def execute_begin(self, operation):
         """
         Initialize operation for manipulate
 
@@ -139,12 +132,14 @@ class TransactionManager:
         :param time_stamp: time
         :return: True or False
         """
-        tid = operand[0]
+        tid = operation.get_tid()
         self.check_operation_validity(tid)
+
+        time_stamp = operation.get_time()
         self.transactions[tid] = Transaction(tid, time_stamp)
         return True
 
-    def execute_begin_read_only(self, operand, time_stamp):
+    def execute_begin_read_only(self, operation):
         """
         Initialize the initial operation for read only
 
@@ -152,11 +147,13 @@ class TransactionManager:
         :param time_stamp: time
         :return: True or False
         """
-        tid = operand[0]
+        tid = operation.get_tid()
         self.check_operation_validity(tid)
 
+        time_stamp = operation.get_time()
         trans = Transaction(tid, time_stamp)
         trans.set_trans_type(TransactionType.RO)
+
         self.transactions[tid] = trans
 
         # take snapshot
@@ -164,7 +161,7 @@ class TransactionManager:
             site.get_snapshot(time_stamp)
         return True
 
-    def execute_read(self, operand, retry=False):
+    def execute_read(self, operation, is_retry=False):
         """
         Execute the read operation, for both read and readonly
 
@@ -173,10 +170,10 @@ class TransactionManager:
         :param time_stamp: time
         :return: True or False
         """
-        if not retry:
-            self.save_to_transaction()
+        if not is_retry:
+            self.save_to_transaction(operation)
 
-        tid, vid = operand[0], operand[1][1:]
+        tid, vid = operation.get_tid(), operation.get_vid()
         self.check_operation_validity(tid)
 
         # Case 1: read_only transaction
@@ -226,7 +223,7 @@ class TransactionManager:
                     return read_variable(tid, vid, site)
         return False
 
-    def execute_write(self, operand, retry=False):
+    def execute_write(self, operation, is_retry=False):
         """
         Execute Write operation
 
@@ -234,10 +231,10 @@ class TransactionManager:
         :param retry: If the operation is a retry
         :return: True or False
         """
-        if not retry:
+        if not is_retry:
             self.save_to_transaction()
 
-        tid, vid, value = operand[0], operand[1][1:], operand[2]
+        tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
         self.check_operation_validity(tid)
 
         locked_site_list = []
@@ -271,9 +268,9 @@ class TransactionManager:
         IOUtils.print_result(TABLE_HEADERS, rows)
         return True
 
-    def execute_fail(self, operand):
+    def execute_fail(self, operation):
         # get site_id
-        site = self.sites[operand[0]]
+        site = self.sites[operation.get_sid()]
         # get all trans in this site
         trans = site.lock_manager.get_all_transactions()
         for tid in trans:
@@ -281,16 +278,16 @@ class TransactionManager:
         site.fail()
         return True
 
-    def execute_recover(self, operand):
-        site = self.sites[operand[0]]
+    def execute_recover(self, operation):
+        site = self.sites[operation.get_sid()]
         site.recover()
         return True
 
-    def execute_end(self, operand, retry=False):
-        if not retry:
+    def execute_end(self, operation, is_retry=False):
+        if not is_retry:
             self.save_to_transaction()
 
-        tid = operand[0]
+        tid = operation.get_tid()
         self.check_operation_validity(tid)
         trans_start_time = self.transactions[tid].time_stamp
 
@@ -300,7 +297,7 @@ class TransactionManager:
         # a lock) at a site and the site then fails, then T should continue to execute
         # and then abort only at its commit time (unless T is aborted earlier due to
         # deadlock).
-        if self.transactions[tid].to_be_aborted:
+        if self.transactions[tid].transaction_status == TransactionStatus.ABORTED:
             self.abort(tid, AbortType.SITE_FAILURE)
             return True
 
@@ -358,10 +355,41 @@ class TransactionManager:
 
         return site_list
 
-    def save_to_transaction(self):
-        # TODO save operations
-        pass
+    def save_to_transaction(self, operation):
+        """
+        Append operation to corresponding transaction's operation list
+        :param tm: Transaction Manager
+        :return: None
+        """
+        tid = operation.get_tid()
+        # if tid == None:
+        #     raise TypeError("Try to append dump operation to transaction")
 
+        if tid not in self.transactions:
+            raise KeyError(f"Try to execute {operation.get_type()} in a non-existing transaction")
+
+        self.transactions[tid].add_operation(self)
+        self.wait_for_graph.add_operation(self)
+
+    # Read variable from log if the variable was modified by transaction,
+    # otherwise read from committed data
     def read_variable(self, tid, vid, sid):
-        # TODO read variable and print
-        pass
+        """
+        Read the variable, and print in prettytable
+
+        :param sid: site id
+        :param tid: trans id
+        :param vid: variable id
+        :return:
+        """
+
+        # Case 1: data has been changed by the same transaction but not commit before
+        if tid in site.data_manager.log and vid in site.data_manager.log[tid]:
+            res = site.data_manager.uncommitted_log[tid][vid]
+        else:
+            res = site.data_manager.get_variable(vid)
+
+        print_result(["Transaction", "Site", f"x{vid}"], [[tid, f"{site.sid}", res]])
+
+        return True
+

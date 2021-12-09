@@ -1,6 +1,13 @@
+import PrettyTable
+from src.utils.FileLoader import FileLoader
 from src.manager.TransactionManager import TransactionManager
 from src.model.Operation import Operation
-import PrettyTable
+
+f = FileLoader("D:/Courses/NYU MSCS/2021 Fall/RepCRec/src/Tests/Test3.txt")
+f.write_to_operations()
+for op in f.operations:
+    print(op.type, op.Tid, op.vid, op.value, op.sid, op.time)
+
 
 def run(operations):
     """
@@ -13,15 +20,24 @@ def run(operations):
 
     time_stamp = 0
     for operation in operations:
+        transaction_manager.execute_operation(operation)
         time_stamp += 1
-        op = Operation.parse_operation(operation)
-        transaction_manager.two_step_execute(op, time_stamp)
 
     while transaction_manager.waiting_list:
         time_stamp += 1
-        is_succeed = transaction_manager.retry(time_stamp)
+        is_succeed = transaction_manager.retry()
         if not is_succeed:
-            print("This operation execution failed: " + transaction_manager.waiting_list.pop(0))
+            op = transaction_manager.waiting_list.pop(0)
+            print(f'The operation {op} failed', op)
+
+
+def run_by_file(input, output):
+    with open(output, "w") as f:
+        sys.stdout = f
+        loader = FileLoader(input)
+        loader.write_to_operations()
+        ops = loader.operations
+        run(ops)
 
 
 def run_by_step():
@@ -45,4 +61,3 @@ def print_result(headers, rows):
 
 def print_commit_result(tid):
     print(f"Transaction {tid} commit")
-

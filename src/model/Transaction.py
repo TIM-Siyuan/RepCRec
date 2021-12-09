@@ -10,6 +10,7 @@ class Transaction:
         self.time_stamp = time_stamp
         self.transaction_type = TransactionType.RW
         self.transaction_status = TransactionStatus.ACTIVE
+        #for debug
         self.operations = []
 
     # def __str__(self):
@@ -22,5 +23,15 @@ class Transaction:
     def set_trans_status(self, trans_status):
         self.transaction_status = trans_status
 
+    def add_operation(self, operation):
+        """
+        Add given operation to the transactions
 
-    # def add_operation(self, operation):
+        :param operation: an operation
+        :return: None
+        """
+        self.operations.append(operation)
+
+    def __str__(self):
+        return f"Identifier: {self.transaction_id} & ReadOnly: {self.is_readonly} & " \
+               f"Operations: {[str(op) for op in self.operations]}"
