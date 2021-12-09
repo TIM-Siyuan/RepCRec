@@ -21,7 +21,7 @@ class Site:
         :return: None
         """
         self.status = SiteStatus.UP
-        self.data_manager.recover()
+        # self.data_manager.recover()
 
     def fail(self):
         """
@@ -40,12 +40,12 @@ class Site:
         :param time_stamp: time
         :return: None
         """
-        available_data = {}
-        for i, data in enumerate(self.data_manager.data):
+        new_data = {}
+        for i, data in enumerate(self.data_manager.data.values()):
             if data and self.data_manager.is_available(i + 1):
-                available_data[i + 1] = data
+                new_data[i + 1] = data.get_value()
 
-        self.snapshots[time_stamp] = deepcopy(available_data)
+        self.snapshots[time_stamp] = deepcopy(new_data)
 
     def get_snapshot_variable(self, time_stamp, vid):
         """
@@ -55,7 +55,7 @@ class Site:
         :param vid: variable id
         :return: variable value
         """
-        return self.snapshots[time_stamp][vid].get_data_type()
+        return self.snapshots[time_stamp][vid]
 
     def print_all_sites(self):
         prefix = f"Site {self.sid} ({SiteStatus.UP.name if self.status == SiteStatus.UP else SiteStatus.DOWN.name})"

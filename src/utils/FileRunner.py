@@ -34,7 +34,7 @@ def run(operations):
         is_succeed = transaction_manager.retry()
         if not is_succeed:
             # op = transaction_manager.waiting_list.pop(0)
-            print(f'The operation {op.get_type()} failed')
+            print(f'The operation {op.get_type()} {op.get_tid()} failed')
 
 
 def run_by_file(input, output):

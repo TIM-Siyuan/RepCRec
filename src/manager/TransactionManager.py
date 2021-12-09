@@ -48,8 +48,8 @@ class TransactionManager:
         # detect deadlock and then abort the youngest transaction if deadlock happens
         if (OperationType.READ == operations.get_type()
                 or OperationType.WRITE == operations.get_type()) \
-                and self.wait_for_graph.check_deadlock():
-            trans = self.find_youngest_trans(self.wait_for_graph.get_trace())[0]
+                and self.wait_for_graph.deadlock():
+            trans = self.find_youngest_trans(self.wait_for_graph.getcycle())[0]
             self.abort(trans, AbortType.DEADLOCK)
 
     def retry(self):
@@ -83,10 +83,6 @@ class TransactionManager:
     def abort(self, tid, abort_type):
         """
         Abort the transaction
-        # Steps:
-        #   1. release locks
-        #   2. revert transaction changes
-        #   3. delete transaction in TM
         :param tid: transaction_id
         :param abort_type: abort reason
         :return: None
@@ -139,8 +135,6 @@ class TransactionManager:
         :return: True or False
         """
         tid = operation.get_tid()
-        # self.check_operation_validity(tid)
-
         time_stamp = operation.get_time()
         self.transactions[tid] = Transaction(tid, time_stamp)
         return True
@@ -154,7 +148,6 @@ class TransactionManager:
         :return: True or False
         """
         tid = operation.get_tid()
-        # self.check_operation_validity(tid)
 
         time_stamp = operation.get_time()
         trans = Transaction(tid, time_stamp)
@@ -191,8 +184,10 @@ class TransactionManager:
                 site = self.sites[vid % num_sites]
                 if site.status == SiteStatus.UP and vid in site.snapshots[trans_time_stamp]:
                     headers = ["Transaction", "Site", "x" + str(vid)]
+                    x = site.get_snapshot_variable(trans_time_stamp, vid)
                     rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
-                    IOUtils.print_result(headers, rows)
+                    print_result(headers, rows)
+                    # IOUtils.print_result(headers, rows)
                     return True
                 else:
                     return False
@@ -212,6 +207,7 @@ class TransactionManager:
                     elif trans_time_stamp in site.snapshots \
                             and vid in site.snapshots[trans_time_stamp]:
                         headers = ["Transaction", "Site", "x" + str(vid)]
+                        x = site.get_snapshot_variable(trans_time_stamp, vid)
                         rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
                         #TODO IOUtils
                         print_result(headers, rows)
@@ -242,64 +238,63 @@ class TransactionManager:
             self.save_to_transaction(operation)
         #
         tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
-        # self.check_operation_validity(tid)
 
-        locked_site_list = []
-        # Try to lock all sites have given variable
-        for site in self.generate_site_list(vid):
-            # check site status and append it to locked sites
-            if site.status == SiteStatus.UP \
-                    and site.lock_manager.acquire_write_lock(tid, vid):
-                locked_site_list.append(site)
-            # release all locks added previously if it is conflicted
-            else:
-                for locked_site in locked_site_list:
-                    locked_site.lock_manager.release_lock(tid, vid)
-                return False
-
-        # retry later if not available list now
-        if len(locked_site_list) == 0:
-            return False
-
-        # execute write operation
-        for locked_site in locked_site_list:
-            logs = locked_site.data_manager.uncommitted_log.get(tid, {})
-            logs[vid] = value
-            locked_site.data_manager.uncommitted_log[tid] = logs
-
-        return True
-
-
-        # if vid % 2 != 0:
-        #     # site list start from 0, so the index should minus 1, from vid%10+1 to vid%10
-        #     site = self.sites[vid % num_sites]
-        #     if site.status == SiteStatus.DOWN:
-        #         return False
-        #     elif site.lock_manager.acquire_write_lock(tid, vid):
-        #         logs = site.data_manager.uncommitted_log.get(tid, {})
-        #         logs[vid] = value
-        #         site.data_manager.uncommitted_log[tid] = logs
-        #         return True
+        # locked_site_list = []
+        # # Try to lock all sites have given variable
+        # for site in self.generate_site_list(vid):
+        #     # check site status and append it to locked sites
+        #     if site.status == SiteStatus.UP \
+        #             and site.lock_manager.acquire_write_lock(tid, vid):
+        #         locked_site_list.append(site)
+        #     # release all locks added previously if it is conflicted
         #     else:
+        #         for locked_site in locked_site_list:
+        #             locked_site.lock_manager.release_lock(tid, vid)
         #         return False
-        # else:
-        #     locked_sites = []
-        #     for site in self.sites:
-        #         if site.status == SiteStatus.DOWN and \
-        #                 site.lock_manager.acquire_write_lock(tid, vid):
-        #             locked_sites.append(site)
-        #         else:
-        #             for locked_site in locked_sites:
-        #                 locked_site.release_lock(tid, vid)
-        #             return False
-        #     if len(locked_sites) == 0:
-        #         return False
-        #     for locked_site in locked_sites:
-        #         logs = locked_site.data_manager.uncommitted_log.get(tid, {})
-        #         logs[vid] = value
-        #         locked_site.data_manager.uncommitted_log[tid] = logs
-        #     return True
-        # return False
+        #
+        # # retry later if not available list now
+        # if len(locked_site_list) == 0:
+        #     return False
+        #
+        # # execute write operation
+        # for locked_site in locked_site_list:
+        #     logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+        #     logs[vid] = value
+        #     locked_site.data_manager.uncommitted_log[tid] = logs
+        #
+        # return True
+
+
+        if vid % 2 != 0:
+            # site list start from 0, so the index should minus 1, from vid%10+1 to vid%10
+            site = self.sites[vid % num_sites]
+            if site.status == SiteStatus.DOWN:
+                return False
+            elif site.lock_manager.acquire_write_lock(tid, vid):
+                logs = site.data_manager.uncommitted_log.get(tid, {})
+                logs[vid] = value
+                site.data_manager.uncommitted_log[tid] = logs
+                return True
+            else:
+                return False
+        else:
+            locked_sites = []
+            for site in self.sites:
+                if site.status == SiteStatus.DOWN and \
+                        site.lock_manager.acquire_write_lock(tid, vid):
+                    locked_sites.append(site)
+                else:
+                    for locked_site in locked_sites:
+                        locked_site.release_lock(tid, vid)
+                    return False
+            if len(locked_sites) == 0:
+                return False
+            for locked_site in locked_sites:
+                logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+                logs[vid] = value
+                locked_site.data_manager.uncommitted_log[tid] = logs
+            return True
+        return False
 
     def execute_dump(self):
         rows = [site.print_all_sites() for site in self.sites]
@@ -309,7 +304,7 @@ class TransactionManager:
 
     def execute_fail(self, operation):
         # get site_id
-        site = self.sites[operation.get_sid()]
+        site = self.sites[operation.get_sid() - 1]
         # get all trans in this site
         trans = site.lock_manager.get_all_transactions()
         for tid in trans:
@@ -318,7 +313,7 @@ class TransactionManager:
         return True
 
     def execute_recover(self, operation):
-        site = self.sites[operation.get_sid()]
+        site = self.sites[operation.get_sid() - 1]
         site.recover()
         return True
 

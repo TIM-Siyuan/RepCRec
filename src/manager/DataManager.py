@@ -13,7 +13,7 @@ class DataManager:
         for i in range(1, num_distinct_variables + 1):
             if i % 2 == 0:
                 data[i] = DataCopy(DataType.REPLICATED, num_sites * i)
-            if i % 2 == 1 or i % 10 + 1 == idx:
+            if i % 2 == 1 or i % num_sites + 1 == idx:
                 data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
         return data
 
@@ -38,17 +38,17 @@ class DataManager:
     def read(self, vid):
         return self.data[vid].get_latest_commit()
 
-    def recover(self):
-        """
-        set variables readability (a read for a replicated variable x will not be allowed at a recovered site)
-
-        :return: None
-        """
-        for key, value in self.data.items():
-            if value.get_data_type() == DataType.NONREPLICATED:
-                value.set_read_available(True)
-            else:
-                value.set_read_available(False)
+    # def recover(self):
+    #     """
+    #     set variables readability (a read for a replicated variable x will not be allowed at a recovered site)
+    #
+    #     :return: None
+    #     """
+    #     for key, value in self.data.items():
+    #         if value.get_data_type() == DataType.NONREPLICATED:
+    #             value.set_read_available(True)
+    #         else:
+    #             value.set_read_available(False)
 
     def fail(self):
         """

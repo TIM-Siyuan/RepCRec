@@ -1,5 +1,6 @@
 from src.model.Operation import Operation
 from src.CustomizedConf import OperationType
+from collections import defaultdict
 
 
 class DeadLockDetector:
@@ -43,11 +44,8 @@ O
             return
 
         vid = operation.get_vid()
-        #All the operation on that vid
+        # All the operation on that vid
         operation_list = self.var_to_ops.get(vid, set())
-
-        if operation.get_time() == 5:
-            pass
         # Read Operation
         if operation_type == OperationType.READ:
             # Check if previous operation of the same transaction operated on the same variable
@@ -90,48 +88,25 @@ O
         operation_list.add(operation)
         self.var_to_ops[vid] = operation_list
 
-    def recursive_check(self, cur_node, target, visited, trace):
-        visited[cur_node] = True
 
-        if cur_node not in self.wait_for:
+
+
+    def deadlock(self):
+        graph = self.wait_for
+        edge_list = []
+        for key, values in graph.items():
+            for value in values:
+                edge_list.append([key, value])
+        V = len(self.tm.transactions)
+        G = Graph(V)
+        for edge in edge_list:
+            G.addEdge(edge[0], edge[1])
+        if G.isCyclic() == 1:
+            self.trace=self.getcycle()
+            return True
+        else:
             return False
 
-        trace.append(cur_node)
-        neighbor_nodes = self.wait_for[cur_node]
-
-        for neighbor in neighbor_nodes:
-            if neighbor == target:
-                return True
-            elif neighbor not in visited:
-                continue
-            elif not visited[neighbor]:
-                if self.recursive_check(neighbor, target, visited, trace):
-                    return True
-
-        trace.pop(-1)
-        return False
-
-    def check_deadlock(self):
-        """
-        Detect if there is a circle in current execution
-        :return: True if there is a deadlock, otherwise False
-        """
-        nodes = list(self.wait_for.keys())
-        self.trace = []
-
-        for target in nodes:
-            visited = {node: False for node in nodes}
-            if self.recursive_check(target, target, visited, self.trace):
-                return True
-        return False
-
-    def get_trace(self):
-        """
-        Return all transaction in a deadlock circle
-        Note: This function will return a empty list if self.check_deadlock() == True
-        :return: A list of transaction
-        """
-        return self.trace
 
     def remove_transaction(self, tid):
         """
@@ -147,3 +122,66 @@ O
 
         # Modify wait for graph, delete the node of given transaction id
         self.wait_for.pop(tid, None)
+
+    def getcycle(self):
+        graph = self.wait_for
+        edge_list = []
+        for key, values in graph.items():
+            for value in values:
+                edge_list.append([key, value])
+        v_set = set()
+        start = []
+        end = []
+        for edge in edge_list:
+            start.append(edge[0])
+            end.append(edge[1])
+            v_set.add(edge[0])
+            v_set.add(edge[1])
+        for i in range(len(v_set)):
+            for v in end:
+                if v not in start:
+                    edge_list.remove(v)
+        cycle = []
+        for v in v_set:
+            cycle.append(v)
+        return cycle
+
+
+
+
+
+class Graph:
+    def __init__(self, vertices):
+        self.graph = defaultdict(list)
+        self.V = vertices
+
+    def addEdge(self, u, v):
+        self.graph[u].append(v)
+
+    def isCyclicUtil(self, v, visited, recStack):
+
+        # Mark current node as visited and
+        # adds to recursion stack
+        visited[v] = True
+        recStack[v] = True
+
+        for neighbour in self.graph[v]:
+            if visited[neighbour] == False:
+                if self.isCyclicUtil(neighbour, visited, recStack) == True:
+                    return True
+            elif recStack[neighbour] == True:
+                return True
+
+        # The node needs to be poped from
+        # recursion stack before function ends
+        recStack[v] = False
+        return False
+
+    def isCyclic(self):
+        visited = [False] * (self.V + 1)
+        recStack = [False] * (self.V + 1)
+        for node in range(self.V):
+            if visited[node] == False:
+                if self.isCyclicUtil(node, visited, recStack) == True:
+                    return True
+        return False
