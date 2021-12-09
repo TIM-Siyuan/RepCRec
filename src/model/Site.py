@@ -21,7 +21,7 @@ class Site:
         :return: None
         """
         self.status = SiteStatus.UP
-        # self.data_manager.recover()
+        self.data_manager.recover()
 
     def fail(self):
         """
@@ -30,8 +30,10 @@ class Site:
         :return: None
         """
         self.status = SiteStatus.DOWN
+        self.data_manager.uncommitted_log = {}
         self.lock_manager.fail()
-        self.data_manager.fail()
+        # self.data_manager.fail()
+        self.data_manager.disable_accessibility()
 
     def get_snapshot(self, time_stamp):
         """
@@ -58,8 +60,9 @@ class Site:
         return self.snapshots[time_stamp][vid]
 
     def print_all_sites(self):
-        prefix = f"Site {self.sid} ({SiteStatus.UP.name if self.status == SiteStatus.UP else SiteStatus.DOWN.name})"
-        return [prefix] + [val.get_value() for val in self.data_manager.data.values()]
+        col_title = f"Site {self.sid} ({SiteStatus.UP.name if self.status == SiteStatus.UP else SiteStatus.DOWN.name})"
+        return [col_title] + [val.get_value() for val in self.data_manager.data.values()]
+
 
 def deepcopy(obj):
     if isinstance(obj, dict):

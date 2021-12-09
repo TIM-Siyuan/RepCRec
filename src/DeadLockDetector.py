@@ -71,7 +71,7 @@ O
             # Check if previous operation of the same transaction operated on the same variable
             # if so, no deadlock will be formed by adding this operation
             for op in operation_list:
-                if op.get_tid() == tid and op.getType == OperationType.WRITE:
+                if op.get_tid() == tid and op.get_type() == OperationType.WRITE:
                     # Add operation to the dictionary
                     operation_list.add(operation)
                     self.var_to_ops[vid] = operation_list

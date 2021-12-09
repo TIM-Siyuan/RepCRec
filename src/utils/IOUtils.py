@@ -18,4 +18,4 @@ def print_result(headers, rows):
 
 
 def print_commit_result(tid):
-    print(f"Transaction {tid} commit")
+    print(f"Transaction T{tid} commit")

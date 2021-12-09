@@ -9,6 +9,7 @@ from prettytable import PrettyTable
 
 TABLE_HEADERS = ["Site Name"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]
 
+
 class TransactionManager:
     """
     The transaction manager distributes operation and hold the information of the entire simulation
@@ -173,8 +174,7 @@ class TransactionManager:
             self.save_to_transaction(operation)
 
         tid, vid = operation.get_tid(), operation.get_vid()
-        self.check_operation_validity(tid)
-
+        headers = ["Transaction", "Site", "x" + str(vid)]
         # Case 1: read_only transaction
         if self.transactions[tid].transaction_type == TransactionType.RO:
             trans_time_stamp = self.transactions[tid].time_stamp
@@ -183,11 +183,8 @@ class TransactionManager:
             if vid % 2 == 1:
                 site = self.sites[vid % num_sites]
                 if site.status == SiteStatus.UP and vid in site.snapshots[trans_time_stamp]:
-                    headers = ["Transaction", "Site", "x" + str(vid)]
-                    x = site.get_snapshot_variable(trans_time_stamp, vid)
-                    rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
+                    rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
                     print_result(headers, rows)
-                    # IOUtils.print_result(headers, rows)
                     return True
                 else:
                     return False
@@ -206,10 +203,7 @@ class TransactionManager:
                         is_data_exist = True
                     elif trans_time_stamp in site.snapshots \
                             and vid in site.snapshots[trans_time_stamp]:
-                        headers = ["Transaction", "Site", "x" + str(vid)]
-                        x = site.get_snapshot_variable(trans_time_stamp, vid)
-                        rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
-                        #TODO IOUtils
+                        rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
                         print_result(headers, rows)
                         return True
                 # No site has the variable in the snapshot
@@ -236,69 +230,35 @@ class TransactionManager:
         """
         if not is_retry:
             self.save_to_transaction(operation)
-        #
+
         tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
 
-        # locked_site_list = []
-        # # Try to lock all sites have given variable
-        # for site in self.generate_site_list(vid):
-        #     # check site status and append it to locked sites
-        #     if site.status == SiteStatus.UP \
-        #             and site.lock_manager.acquire_write_lock(tid, vid):
-        #         locked_site_list.append(site)
-        #     # release all locks added previously if it is conflicted
-        #     else:
-        #         for locked_site in locked_site_list:
-        #             locked_site.lock_manager.release_lock(tid, vid)
-        #         return False
-        #
-        # # retry later if not available list now
-        # if len(locked_site_list) == 0:
-        #     return False
-        #
-        # # execute write operation
-        # for locked_site in locked_site_list:
-        #     logs = locked_site.data_manager.uncommitted_log.get(tid, {})
-        #     logs[vid] = value
-        #     locked_site.data_manager.uncommitted_log[tid] = logs
-        #
-        # return True
-
-
-        if vid % 2 != 0:
-            # site list start from 0, so the index should minus 1, from vid%10+1 to vid%10
-            site = self.sites[vid % num_sites]
-            if site.status == SiteStatus.DOWN:
-                return False
-            elif site.lock_manager.acquire_write_lock(tid, vid):
-                logs = site.data_manager.uncommitted_log.get(tid, {})
-                logs[vid] = value
-                site.data_manager.uncommitted_log[tid] = logs
-                return True
+        locked_list = []
+        # Try to lock all sites have given variable
+        for site in self.generate_site_list(vid):
+            # check site status and append it to locked sites
+            if site.status == SiteStatus.UP \
+                    and site.lock_manager.acquire_write_lock(tid, vid):
+                locked_list.append(site)
+            # release all locks added previously if it is conflicted
             else:
+                for locked_site in locked_list:
+                    locked_site.lock_manager.release_lock(tid, vid)
                 return False
-        else:
-            locked_sites = []
-            for site in self.sites:
-                if site.status == SiteStatus.DOWN and \
-                        site.lock_manager.acquire_write_lock(tid, vid):
-                    locked_sites.append(site)
-                else:
-                    for locked_site in locked_sites:
-                        locked_site.release_lock(tid, vid)
-                    return False
-            if len(locked_sites) == 0:
-                return False
-            for locked_site in locked_sites:
+
+        # execute write operation
+        if locked_list:
+            for locked_site in locked_list:
                 logs = locked_site.data_manager.uncommitted_log.get(tid, {})
                 logs[vid] = value
                 locked_site.data_manager.uncommitted_log[tid] = logs
             return True
+
+        # retry later if not available list now
         return False
 
     def execute_dump(self):
         rows = [site.print_all_sites() for site in self.sites]
-        # IOUtils.print_result(TABLE_HEADERS, rows)
         print_result(TABLE_HEADERS, rows)
         return True
 
@@ -322,7 +282,6 @@ class TransactionManager:
             self.save_to_transaction(operation)
 
         tid = operation.get_tid()
-        self.check_operation_validity(tid)
         trans_start_time = self.transactions[tid].time_stamp
 
         # Two situation need to abort commit operation
@@ -336,9 +295,10 @@ class TransactionManager:
             return True
 
         # 2. If there are blocked operation of the commit transaction, block the commit
-        if tid in self.waiting_list:
+        if tid in self.waiting_trans:
             return False
-
+        # IOUtils.print_commit_result(tid)
+        print(f"Transaction {tid} commit")
         # execute commit operation
         for site in self.sites:
             if site.status == SiteStatus.UP:
@@ -352,21 +312,15 @@ class TransactionManager:
                 # when readonly transaction end, delete the snapshot belongs to it
                 elif trans_start_time in site.snapshots:
                     site.snapshots.pop(trans_start_time)
-            # release all locks by this committed transaction
-            site.lock_manager.release_locks_by_trans(tid)
+                # release all locks by this committed transaction
+                site.lock_manager.release_locks_by_trans(tid)
 
         if tid in self.waiting_trans:
             self.transactions.pop(tid)
         # When transaction commit, we need to remove the transaction in the wait for graph
         self.wait_for_graph.remove_transaction(tid)
 
-        # IOUtils.print_commit_result(tid)
-        print(f"Transaction {tid} commit")
         return True
-
-    def check_operation_validity(self, tid):
-        if tid not in self.transactions:
-            raise InvalidOperationError("Transaction {} does not exist".format(tid))
 
     def generate_site_list(self, vid):
         """
@@ -415,13 +369,14 @@ class TransactionManager:
         # site = self.sites[sid]
         if tid in site.data_manager.uncommitted_log \
                 and vid in site.data_manager.uncommitted_log[tid]:
-            res = site.data_manager.uncommitted_log[tid][vid]
+            res = site.data_manager.uncommitted_log[tid][vid].get_value()
         else:
-            res = site.data_manager.get_variable(vid)
+            res = site.data_manager.get_variable(vid).get_value()
 
         print_result(["Transaction", "Site", f"x{vid}"], [[tid, f"{site.sid}", res]])
 
         return True
+
 
 def print_result(headers, rows):
     """

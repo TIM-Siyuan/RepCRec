@@ -24,8 +24,9 @@ def run(operations):
 
     time_stamp = 0
     for operation in operations:
-        transaction_manager.execute_operation(operation)
         time_stamp += 1
+        transaction_manager.execute_operation(operation)
+
 
     while transaction_manager.waiting_list:
         time_stamp += 1
