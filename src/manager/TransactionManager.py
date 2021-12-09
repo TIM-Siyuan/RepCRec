@@ -2,7 +2,7 @@ from src.CustomizedConf import *
 from src.DeadLockDetector import *
 from src.model.Site import Site
 from src.model.Transaction import Transaction
-from src.utils import IOUtils
+from src.utils.IOUtils import print_result, print_commit_result
 from src.Exception import *
 from src.model.Operation import Operation
 
@@ -21,7 +21,7 @@ class TransactionManager:
         self.transactions = {}
         self.waiting_list = []
         self.waiting_trans = set()
-        self.wait_for_graph = DeadLockDetector()
+        self.wait_for_graph = DeadLockDetector(self)
         self.sites = [Site(i) for i in range(1, num_sites + 1)]
 
     def execute_operation(self, operation):

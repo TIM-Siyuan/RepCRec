@@ -28,3 +28,6 @@ class Operation:
 
     def get_time(self):
         return self.time
+
+    def set_time(self, time):
+        self.time = time

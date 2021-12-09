@@ -2,8 +2,7 @@ import argparse
 import sys
 import os
 from utils.FileLoader import FileLoader
-from utils.IOUtils import *
-
+from utils.FileRunner import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("RepCRec")
@@ -32,4 +31,5 @@ if __name__ == "__main__":
                 run_file(input_file_name, output_file_name)
 
     elif args.mode == "i":
+        print("in")
         run_by_step()
