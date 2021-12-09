@@ -1,24 +1,18 @@
-class Operation(object):
+import re
+from src.CustomizedConf import OperatorType
 
-    def __init__(self, operation_type, tid, vid, value, sid, time):
-        self.type = operation_type
-        self.tid = tid
-        self.vid = vid
-        self.value = value
-        self.sid = sid
-        self.time = time
 
-    def getType(self):
-        return self.type
+class Operation:
 
-    def getTid(self):
-        return self.tid
+    @staticmethod
+    def parse_operation(line):
+        """
+        Parse operations
 
-    def getvid(self):
-        return self.vid
-
-    def getValuetoWrite(self):
-        return self.value
-
-    def getArrivingTime(self):
-        return self.time
+        :param line: read from stdIn or file
+        :return: dict-- a pair of {key: val}
+        """
+        reg = r'(.*)\((.*?)\)'
+        ops = re.search(reg, line)
+        operator, operand = ops.group(1), [op.strip() for op in ops.group(2).split(",")]
+        return OperatorType[operator](operand)

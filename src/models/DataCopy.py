@@ -1,27 +1,27 @@
-from src.models.enum import data_type
-
-
 class DataCopy:
-    def __init__(self, type, initialvalue):
+    def __init__(self, data_type, initial_value):
+        self.data_type = data_type
         self.read_available = True
-        self.type = type
-        self.commit_history = {-1: initialvalue}
+        self.commit_history = {-1: initial_value}
 
-    def isReadAvailable(self):
+    def is_read_available(self):
         return self.read_available
 
-    def setReadAvailable(self, availability):
+    def set_read_available(self, availability):
         self.read_available = availability
 
-    def getDataType(self):
-        return self.type
+    def get_data_type(self):
+        return self.data_type
 
-    def addCommitHistory(self, time, value):
+    def add_commit_history(self, time, value):
         self.commit_history[time] = value
 
-    def getLastestCommit(self):
+    def get_latest_commit(self):
         v = max(self.commit_history, key=self.commit_history.get)
         return v
 
-    def getCommitHistory(self):
+    def get_commit_history(self):
         return self.commit_history
+
+    def clear_commit_history(self):
+        self.commit_history = {}
