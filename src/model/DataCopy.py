@@ -3,6 +3,7 @@ class DataCopy:
         self.data_type = data_type
         self.read_available = True
         self.commit_history = {-1: initial_value}
+        self.value = initial_value
 
     def is_read_available(self):
         return self.read_available
@@ -25,3 +26,6 @@ class DataCopy:
 
     def clear_commit_history(self):
         self.commit_history = {}
+
+    def get_value(self):
+        self.value

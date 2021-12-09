@@ -27,8 +27,8 @@ class TransactionManager:
         self.wait_for_graph = DeadLockDetector(self)
         self.sites = [Site(idx) for idx in range(1, num_sites + 1)]
 
-    def get_all_sites(self, sites):
-        self.sites = sites
+    # def get_all_sites(self, sites):
+    #     self.sites = sites
 
     def execute_operation(self, operations):
         """
@@ -269,7 +269,7 @@ class TransactionManager:
         return True
 
     def execute_dump(self):
-
+        print(len(self.sites))
         rows = [site.print_all_sites() for site in self.sites]
         # IOUtils.print_result(TABLE_HEADERS, rows)
         print_result(TABLE_HEADERS, rows)
