@@ -45,7 +45,7 @@ class TransactionManager:
             or OperationType.WRITE == operations.get_type()) \
                 and self.wait_for_graph.deadlock():
             trans = self.find_youngest_trans(self.wait_for_graph.getcycle())[0]
-            self.abort(trans, AbortType.DEADLOCK)
+            self.abort(trans)
 
     def retry(self):
         """
