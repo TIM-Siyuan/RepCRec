@@ -10,17 +10,19 @@ class DataManager:
     @staticmethod
     def _init_db(idx):
         data = {}
-        for i in range(1, num_distinct_variables + 1):
-            if i % 2 == NumType.EVEN:
-                data[i] = DataCopy(DataType.REPLICATED, num_sites * i)
-            if i % 2 == NumType.ODD and i % num_sites + 1 == self.site_id:
-                data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
+
+        for i in range(1, 20 + 1):
+            if i % 2 == 0:
+                data[i - 1] = DataCopy(DataType.REPLICATED, num_sites * i)
+            if i % 2 == 1 or i % 10 + 1 == idx:
+                data[i - 1] = DataCopy(DataType.NONREPLICATED, num_sites * i)
         return data
 
     def __init__(self, site_id):
         self.site_id = site_id
         self.uncommitted_log = {}
         self.data = self._init_db(site_id)
+
 
     def set_variable(self, vid, val):
         if vid % 2 == NumType.EVEN:

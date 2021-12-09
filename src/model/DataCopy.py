@@ -28,4 +28,4 @@ class DataCopy:
         self.commit_history = {}
 
     def get_value(self):
-        self.value
+        return self.value

@@ -20,7 +20,7 @@ def run(operations):
     :return: None
     """
     transaction_manager = TransactionManager()
-    # transaction_manager.get_all_sites(init_sites())
+    transaction_manager.get_all_sites(init_sites())
 
     time_stamp = 0
     for operation in operations:

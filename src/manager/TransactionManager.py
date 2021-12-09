@@ -25,10 +25,10 @@ class TransactionManager:
         self.waiting_list = []
         self.waiting_trans = set()
         self.wait_for_graph = DeadLockDetector(self)
-        self.sites = [Site(idx) for idx in range(1, num_sites + 1)]
+        self.sites = []
 
-    # def get_all_sites(self, sites):
-    #     self.sites = sites
+    def get_all_sites(self, sites):
+        self.sites = sites
 
     def execute_operation(self, operations):
         """
