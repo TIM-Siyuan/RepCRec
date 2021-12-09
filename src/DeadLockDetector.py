@@ -46,12 +46,14 @@ O
         #All the operation on that vid
         operation_list = self.var_to_ops.get(vid, set())
 
+        if operation.get_time() == 5:
+            pass
         # Read Operation
         if operation_type == OperationType.READ:
             # Check if previous operation of the same transaction operated on the same variable
             # if so, no deadlock will be formed by adding this operation
             for op in operation_list:
-                if op.getTid() == tid:
+                if op.get_tid() == tid:
                     # Add operation to the dictionary
                     operation_list.add(operation)
                     self.var_to_ops[vid] = operation_list
@@ -62,9 +64,9 @@ O
             # For example, op is W(T1, x1, 10), the operation to be added is R(T2, x1)
             # then the edge is T2 -> T1
             for op in operation_list:
-                if op.getType() == OperationType.WRITE and op.getTid() != tid:
+                if op.get_type() == OperationType.WRITE and op.get_tid() != tid:
                     waits = self.wait_for.get(tid, set())
-                    waits.add(op.getTid)
+                    waits.add(op.get_tid())
                     self.wait_for[tid] = waits
         # Case 2: operation is W
         else:
@@ -79,9 +81,9 @@ O
 
             # W operation will conflict with all other operation on the same variable
             for op in operation_list:
-                if op.get_tid != tid:
+                if op.get_tid() != tid and op.get_type() == OperationType.WRITE:
                     waits = self.wait_for.get(tid, set())
-                    waits.add(op.get_tid)
+                    waits.add(op.get_tid())
                     self.wait_for[tid] = waits
 
         # Add operation to the dictionary

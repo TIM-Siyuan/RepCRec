@@ -97,7 +97,7 @@ class TransactionManager:
                 site.data_manager.revert_trans_changes(tid)
 
         # Remove any blocked operation belongs to this transaction
-        self.waiting_list = [op for op in self.waiting_list if op.get_parameters()[0] != tid]
+        self.waiting_list = [op for op in self.waiting_list if op.get_tid != tid]
 
         # Remove transaction in wait for graph
         self.wait_for_graph.remove_transaction(tid)
@@ -105,9 +105,9 @@ class TransactionManager:
         self.transactions.pop(tid)
         if abort_type == AbortType.DEADLOCK:
             print(f"Transaction {tid} aborted (deadlock)")
-        elif abort_type == AbortType.DEADLOCK:
+        elif abort_type == AbortType.SITE_FAILURE:
             print(f"Transaction {tid} aborted (site failure)")
-        elif abort_type == AbortType.DEADLOCK:
+        elif abort_type == AbortType.NO_DATA_FOR_READ_ONLY:
             print(f"Transaction {tid} aborted (read-only, no data available in sites to read)")
         else:
             raise ValueError(f"Unknown abort type: {abort_type}")
@@ -124,7 +124,7 @@ class TransactionManager:
         elif OperationType.RECOVER == operation.get_type():
             return self.execute_recover(operation)
         elif OperationType.FAIL == operation.get_type():
-            return self.execute_fail()
+            return self.execute_fail(operation)
         elif OperationType.DUMP == operation.get_type():
             return self.execute_dump()
         elif OperationType.END == operation.get_type():
@@ -187,11 +187,11 @@ class TransactionManager:
             trans_time_stamp = self.transactions[tid].time_stamp
             # 1.1: If xi is not replicated and the site holding xi is up, then the read-only
             # transaction can read it. Because that is the only site that knows about xi.
-            if vid % 2 == NumType.ODD:
-                site = self.sites[vid % num_sites + 1]
+            if vid % 2 == 1:
+                site = self.sites[vid % num_sites]
                 if site.status == SiteStatus.UP and vid in site.snapshots[trans_time_stamp]:
-                    headers = ["Transaction", "Site", "x" + vid]
-                    rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
+                    headers = ["Transaction", "Site", "x" + str(vid)]
+                    rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
                     IOUtils.print_result(headers, rows)
                     return True
                 else:
@@ -211,9 +211,10 @@ class TransactionManager:
                         is_data_exist = True
                     elif trans_time_stamp in site.snapshots \
                             and vid in site.snapshots[trans_time_stamp]:
-                        headers = ["Transaction", "Site", "x" + vid]
-                        rows = [[tid, f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
-                        IOUtils.print_result(headers, rows)
+                        headers = ["Transaction", "Site", "x" + str(vid)]
+                        rows = [["T" + str(tid), f"{site.sid}", f"{site.get_snapshot_variable(trans_time_stamp, vid)}"]]
+                        #TODO IOUtils
+                        print_result(headers, rows)
                         return True
                 # No site has the variable in the snapshot
                 if not is_data_exist:
@@ -226,7 +227,7 @@ class TransactionManager:
                 if site.status == SiteStatus.UP \
                         and site.data_manager.is_available(vid) \
                         and site.lock_manager.acquire_read_lock(tid, vid):
-                    return read_variable(tid, vid, site)
+                    return self.read_variable(tid, vid, site)
         return False
 
     def execute_write(self, operation, is_retry=False):
@@ -239,7 +240,7 @@ class TransactionManager:
         """
         if not is_retry:
             self.save_to_transaction(operation)
-
+        #
         tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
         # self.check_operation_validity(tid)
 
@@ -268,8 +269,39 @@ class TransactionManager:
 
         return True
 
+
+        # if vid % 2 != 0:
+        #     # site list start from 0, so the index should minus 1, from vid%10+1 to vid%10
+        #     site = self.sites[vid % num_sites]
+        #     if site.status == SiteStatus.DOWN:
+        #         return False
+        #     elif site.lock_manager.acquire_write_lock(tid, vid):
+        #         logs = site.data_manager.uncommitted_log.get(tid, {})
+        #         logs[vid] = value
+        #         site.data_manager.uncommitted_log[tid] = logs
+        #         return True
+        #     else:
+        #         return False
+        # else:
+        #     locked_sites = []
+        #     for site in self.sites:
+        #         if site.status == SiteStatus.DOWN and \
+        #                 site.lock_manager.acquire_write_lock(tid, vid):
+        #             locked_sites.append(site)
+        #         else:
+        #             for locked_site in locked_sites:
+        #                 locked_site.release_lock(tid, vid)
+        #             return False
+        #     if len(locked_sites) == 0:
+        #         return False
+        #     for locked_site in locked_sites:
+        #         logs = locked_site.data_manager.uncommitted_log.get(tid, {})
+        #         logs[vid] = value
+        #         locked_site.data_manager.uncommitted_log[tid] = logs
+        #     return True
+        # return False
+
     def execute_dump(self):
-        print(len(self.sites))
         rows = [site.print_all_sites() for site in self.sites]
         # IOUtils.print_result(TABLE_HEADERS, rows)
         print_result(TABLE_HEADERS, rows)
@@ -349,13 +381,11 @@ class TransactionManager:
         """
         site_list = []
 
-        if vid % 2 == NumType.ODD:
+        if vid % 2 == 1:
             # non-replicated var find the only site
-            s = self.sites[vid % num_sites + 1]
+            site_list.append(self.sites[vid % num_sites])
         else:
-            s = self.sites
-
-        site_list.extend(s)
+            site_list.extend(self.sites)
 
         return site_list
 
@@ -377,18 +407,19 @@ class TransactionManager:
 
     # Read variable from log if the variable was modified by transaction,
     # otherwise read from committed data
-    def read_variable(self, tid, vid, sid):
+    def read_variable(self, tid, vid, site):
         """
         Read the variable, and print in prettytable
 
-        :param sid: site id
         :param tid: trans id
         :param vid: variable id
         :return:
         """
 
         # Case 1: data has been changed by the same transaction but not commit before
-        if tid in site.data_manager.log and vid in site.data_manager.log[tid]:
+        # site = self.sites[sid]
+        if tid in site.data_manager.uncommitted_log \
+                and vid in site.data_manager.uncommitted_log[tid]:
             res = site.data_manager.uncommitted_log[tid][vid]
         else:
             res = site.data_manager.get_variable(vid)
