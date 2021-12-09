@@ -62,7 +62,7 @@ class DeadLockDetector:
         V = len(self.tm.transactions)
         G = Graph(V)
         for edge in edge_list:
-            G.addEdge(edge[1], edge[0])
+            G.addEdge(edge[0], edge[1])
         if G.isCyclic() == 1:
             self.trace = self.getcycle()
             return True
@@ -90,8 +90,8 @@ class DeadLockDetector:
         start = []
         end = []
         for edge in edge_list:
-            start.append(edge[1])
-            end.append(edge[0])
+            start.append(edge[0])
+            end.append(edge[1])
             v_set.add(edge[0])
             v_set.add(edge[1])
         for i in range(len(v_set)):
