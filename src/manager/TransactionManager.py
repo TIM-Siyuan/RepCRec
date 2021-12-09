@@ -31,8 +31,7 @@ class TransactionManager:
         """
         Process the new operation
 
-        :param operation: new operation
-        :param time_stamp:
+        :param operations: new operation
         :return: None
         """
         # retry
@@ -76,11 +75,10 @@ class TransactionManager:
         ages = [(tid, self.transactions[tid].time_stamp) for tid in cycle]
         return sorted(ages, key=lambda x: -x[1])[0]
 
-    def abort(self, tid, abort_type):
+    def abort(self, tid):
         """
         Abort the transaction
         :param tid: transaction_id
-        :param abort_type: abort reason
         :return: None
         """
         for site in self.sites:
@@ -117,8 +115,7 @@ class TransactionManager:
         """
         Initialize operation for manipulate
 
-        :param operand: specific data from operations.
-        :param time_stamp: time
+        :param operation: specific data from operations.
         :return: True or False
         """
         tid = operation.get_tid()
@@ -130,8 +127,7 @@ class TransactionManager:
         """
         Initialize the initial operation for read only
 
-        :param operand: specific data from operations.
-        :param time_stamp: time
+        :param operation: specific data from operations.
         :return: True or False
         """
         tid = operation.get_tid()
@@ -151,9 +147,7 @@ class TransactionManager:
         """
         Execute the read operation, for both read and readonly
 
-        :param retry:
-        :param operand: specific data from operations.
-        :param time_stamp: time
+        :param operation: specific data from operations.
         :return: True or False
         """
         if not is_retry:
@@ -211,7 +205,7 @@ class TransactionManager:
         """
         Execute Write operation
 
-        :param operand: specific data from operations
+        :param operation: specific data from operations.
         :param retry: If the operation is a retry
         :return: True or False
         """
@@ -331,7 +325,7 @@ class TransactionManager:
 
     def generate_site_list(self, vid):
         """
-        check vid status and return site list
+        check variable status and return site list
         :param vid: variable id
         :return: List
         """
@@ -346,34 +340,15 @@ class TransactionManager:
         return site_list
 
     def save_to_transaction(self, operation):
-        """
-        Append operation to corresponding transaction's operation list
-        :param tm: Transaction Manager
-        :return: None
-        """
         tid = operation.get_tid()
-        # if tid == None:
-        #     raise TypeError("Try to append dump operation to transaction")
-
         if tid not in self.transactions:
             raise KeyError(f"Try to execute {operation.get_type()} in a non-existing transaction")
 
         self.transactions[tid].add_operation(operation)
         self.wait_for_graph.add_operation(operation)
 
-    # Read variable from log if the variable was modified by transaction,
-    # otherwise read from committed data
+
     def read_variable(self, tid, vid, site):
-        """
-        Read the variable, and print in prettytable
-
-        :param tid: trans id
-        :param vid: variable id
-        :return:
-        """
-
-        # Case 1: data has been changed by the same transaction but not commit before
-        # site = self.sites[sid]
         if tid in site.data_manager.uncommitted_log \
                 and vid in site.data_manager.uncommitted_log[tid]:
             res = site.data_manager.uncommitted_log[tid][vid].get_value()

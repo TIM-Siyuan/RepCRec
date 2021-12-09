@@ -15,33 +15,15 @@ class Site:
         return self.status
 
     def recover(self):
-        """
-        Change a site to UP and close the readability of all replicated variables
-
-        :return: None
-        """
         self.status = SiteStatus.UP
         self.data_manager.recover()
 
     def fail(self):
-        """
-        Change site status to DOWN and clear all uncommitted changes in this site
-
-        :return: None
-        """
         self.status = SiteStatus.DOWN
-        # self.data_manager.uncommitted_log = {}
         self.lock_manager.fail()
         self.data_manager.fail()
-        # self.data_manager.disable_accessibility()
 
     def get_snapshot(self, time_stamp):
-        """
-        For multi-version consistency, take snapshot of current data
-
-        :param time_stamp: time
-        :return: None
-        """
         new_data = {}
         for i, data in enumerate(self.data_manager.data.values()):
             if data and self.data_manager.is_available(i + 1):
@@ -50,13 +32,6 @@ class Site:
         self.snapshots[time_stamp] = deepcopy(new_data)
 
     def get_snapshot_variable(self, time_stamp, vid):
-        """
-        Query variable data from snapshot of given tick
-
-        :param time_stamp: time
-        :param vid: variable id
-        :return: variable value
-        """
         return self.snapshots[time_stamp][vid]
 
     def print_all_sites(self):

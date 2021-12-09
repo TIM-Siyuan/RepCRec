@@ -25,7 +25,7 @@ class DataManager:
 
     def recover(self):
         """
-        set variables readability (a read for a replicated variable x will not be allowed at a recovered site)
+        set variables read_ability (a read for a replicated variable x will not be allowed at a recovered site)
 
         :return: None
         """
@@ -49,7 +49,7 @@ class DataManager:
         """
         Revert changes if transaction is going to be aborted
 
-        :param tid
+        :param transaction id
         :return: None
         """
         self.uncommitted_log.pop(tid, None)
@@ -59,7 +59,7 @@ class DataManager:
         Read the value of given variable
 
         :param vid: variable id
-        :return: value of the variable
+        :return: data copy object
         """
         return self.data[vid]
 

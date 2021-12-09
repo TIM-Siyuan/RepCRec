@@ -5,7 +5,6 @@ class Transaction:
     """
        A class to represent transaction
     """
-
     def __init__(self, tid, time_stamp):
         self.tid = tid
         self.time_stamp = time_stamp
@@ -23,10 +22,4 @@ class Transaction:
         self.transaction_status = trans_status
 
     def add_operation(self, operation):
-        """
-        Add given operation to the transactions
-
-        :param operation: an operation
-        :return: None
-        """
         self.operations.append(operation)

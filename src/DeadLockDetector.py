@@ -3,7 +3,6 @@ from src.model.Operation import Operation
 from src.CustomizedConf import OperationType
 
 
-
 class DeadLockDetector:
 
     def __init__(self, tm):

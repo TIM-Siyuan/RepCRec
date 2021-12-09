@@ -3,6 +3,7 @@ from src.manager.TransactionManager import TransactionManager
 from src.utils.FileLoader import *
 from model.Site import Site
 
+
 def init_sites():
     """
     Initialize sites and return list of sites
@@ -42,45 +43,3 @@ def run_by_file(input, output):
         loader.write_to_operations()
         ops = loader.operations
         run(ops)
-
-
-def run_by_step():
-    """
-    Run program step by step
-
-    :return: None
-    """
-    trans_manager = TransactionManager()
-    tick = 0
-
-    while True:
-        command = input("RepCRec: ")
-        try:
-            if command == "restart":
-                trans_manager = TransactionManager()
-                tick = 0
-            elif command == "<END>":
-                while trans_manager.waiting_list:
-                    cur_blocked_size = len(trans_manager.waiting_list)
-                    # tick += 1
-                    trans_manager.retry()
-
-                trans_manager = TransactionManager()
-                tick = 0
-
-            elif command == "exit":
-                print("The program is exited.")
-                break
-            else:
-                tick += 1
-                operation = FileLoader.parse_line(command, 1)
-                print(operation.get_type())
-                print(operation.get_tid())
-                print(operation.get_time())
-                try:
-                    trans_manager.execute_operation(operation)
-                except Exception as e:
-                    print(e)
-        except Exception as e:
-            print(e)
-
