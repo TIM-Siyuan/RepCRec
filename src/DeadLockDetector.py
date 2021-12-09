@@ -22,7 +22,7 @@ class DeadLockDetector:
         # Read operation
         if operation_type == OperationType.READ:
             for op in operation_list:
-                if op.get_tid() == tid:
+                if op.get_tid() == tid and not (op.get_type != operation_type and operation_list >= 2):
                     # Add operation to the dictionary
                     operation_list.add(operation)
                     self.v_operation_dict[vid] = operation_list
@@ -42,7 +42,7 @@ class DeadLockDetector:
                     return
 
             for op in operation_list:
-                if op.get_tid() != tid and op.get_type() == OperationType.WRITE:
+                if op.get_tid() != tid:
                     waiting_ops = self.Trans_waitlist.get(tid, set())
                     waiting_ops.add(op.get_tid())
                     self.Trans_waitlist[tid] = waiting_ops
@@ -62,7 +62,7 @@ class DeadLockDetector:
         V = len(self.tm.transactions)
         G = Graph(V)
         for edge in edge_list:
-            G.addEdge(edge[0], edge[1])
+            G.addEdge(edge[1], edge[0])
         if G.isCyclic() == 1:
             self.trace = self.getcycle()
             return True
@@ -90,8 +90,8 @@ class DeadLockDetector:
         start = []
         end = []
         for edge in edge_list:
-            start.append(edge[0])
-            end.append(edge[1])
+            start.append(edge[1])
+            end.append(edge[0])
             v_set.add(edge[0])
             v_set.add(edge[1])
         for i in range(len(v_set)):
