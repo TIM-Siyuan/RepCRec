@@ -292,7 +292,7 @@ class TransactionManager:
         # and then abort only at its commit time (unless T is aborted earlier due to
         # deadlock).
         if self.transactions[tid].transaction_status == TransactionStatus.ABORTED:
-            self.abort(tid, AbortType.SITE_FAILURE)
+            self.abort(tid)
             return True
 
         # 2. If there are blocked operation of the commit transaction, block the commit
