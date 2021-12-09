@@ -1,54 +1,67 @@
-from src.models.enum import DataType
-from src.models.DataCopy import DataCopy
+from src.CustomizedConf import *
+from src.model.DataCopy import DataCopy
 
 
 class DataManager:
+    """
+        A class to manage data
+    """
     def __init__(self, site_id):
         self.site_id = site_id
-        self.datacopies = {}
-        for i in range(20):
-            if i % 2 == 0:
-                self.datacopies[i] = DataCopy(DataType.REPLICATED, 10*i)
-            if i % 2 == 1 and i % 10 + 1 == self.site_id:
-                self.datacopies[i] = DataCopy(DataType.NONREPLICATED, 10*i)
+        self.uncommitted_log = {}
+        self.data = {}
+        for i in range(1, num_distinct_variables + 1):
+            if i % 2 == NumType.EVEN:
+                self.data[i] = DataCopy(DataType.REPLICATED, num_sites * i)
+            if i % 2 == NumType.ODD and i % num_sites + 1 == self.site_id:
+                self.data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
 
+    def set_variable(self, vid, val):
+        self.data[vid] = val
 
-    def isAvailable(self, vid):
-        return (self.datacopies.get(vid)).read_available
+    def set_available(self, vid, availability):
+        self.data[vid].set_read_available(availability)
+
+    def is_available(self, vid):
+        return self.data[vid].is_read_available()
 
     def read(self, vid):
-        return (self.datacopies.get(vid)).getLastestCommit()
+        return self.data[vid].get_latest_commit()
 
     def recover(self):
-        for key, value in self.datacopies.items():
-           if value.getDataType() == DataType.NONREPLICATED:
-               value.setReadAvailable(True)
+        """
+        set variables readability (a read for a replicated variable x will not be allowed at a recovered site)
+
+        :return: None
+        """
+        for key, value in self.data.items():
+            if value.get_data_type() == DataType.NONREPLICATED:
+                value.set_read_available(True)
+            else:
+                value.set_read_available(False)
 
     def fail(self):
-        for key, value in self.datacopies.items():
-            value.setReadAvailable(False)
+        """
+        set variables readability to False and clear all uncommitted log after a site failed
 
+        :return: None
+        """
+        self.uncommitted_log = {}
+        for key, value in self.data.items():
+            value.set_read_available(False)
 
-    def commit(self, time, new_vids):
-        for key, value in new_vids.item():
-            self.datacopies.get(key).addCommitHistory(time, value)
-            self.datacopies.get(key).setReadAvailable(True)
+    def revert_trans_changes(self, tid):
+        """
+        Revert changes if transaction is going to be aborted
 
-    #getSnapshot
-    def getSnapshot(self, vid, timestamp):
-        datacopy = self.datacopies.get(vid)
-        commits = datacopy.getCommitHistory()
-        for commit in commits:
-            if commit[0] < timestamp:
-                snapshot = commit
-        return snapshot
+        :param tid
+        :return: None
+        """
+        self.uncommitted_log.pop(tid, None)
 
-    #dump
-    def dump(self):
-        #dump site
-        return None
-
-
-
-
+    # def clear_uncommitted_changes(self):
+    #     """
+    #     Reset log to empty after a site fail
+    #     :return: None
+    #     """
 
