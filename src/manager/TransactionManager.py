@@ -2,9 +2,11 @@ from src.CustomizedConf import *
 from src.DeadLockDetector import *
 from src.model.Site import Site
 from src.model.Transaction import Transaction
-from src.utils.IOUtils import print_result, print_commit_result
+from src.utils.IOUtils import *
 from src.Exception import *
 from src.model.Operation import Operation
+from prettytable import PrettyTable
+
 
 class TransactionManager:
     """
@@ -22,9 +24,12 @@ class TransactionManager:
         self.waiting_list = []
         self.waiting_trans = set()
         self.wait_for_graph = DeadLockDetector(self)
-        self.sites = [Site(i) for i in range(1, num_sites + 1)]
+        self.sites = [Site(idx) for idx in range(1, num_sites + 1)]
 
-    def execute_operation(self, operation):
+    def get_all_sites(self, sites):
+        self.sites = sites
+
+    def execute_operation(self, operations):
         """
         Process the new operation
 
@@ -35,13 +40,13 @@ class TransactionManager:
 
         # retry
         self.retry()
-        is_succeed = self.assign_task(operation)
+        is_succeed = self.assign_task(operations)
         if not is_succeed:
-            self.waiting_list.append(operation)
+            self.waiting_list.append(operations)
 
         # detect deadlock and then abort the youngest transaction if deadlock happens
-        if (OperationType.READ in operation
-                or OperationType.WRITE in operation) \
+        if (OperationType.READ == operations.get_type()
+                or OperationType.WRITE == operations.get_type()) \
                 and self.wait_for_graph.check_deadlock():
             trans = self.find_youngest_trans(self.wait_for_graph.get_trace())[0]
             self.abort(trans, AbortType.DEADLOCK)
@@ -55,7 +60,7 @@ class TransactionManager:
         blocked_list = []
         blocked_trans = set()
         for op in self.waiting_list:
-            if not assign_task(op, True):
+            if not self.assign_task(op, True):
                 blocked_list.append(op)
                 if op.get_type() == OperationType.END and op.get_tid() not in blocked_trans:
                     continue
@@ -133,7 +138,7 @@ class TransactionManager:
         :return: True or False
         """
         tid = operation.get_tid()
-        self.check_operation_validity(tid)
+        # self.check_operation_validity(tid)
 
         time_stamp = operation.get_time()
         self.transactions[tid] = Transaction(tid, time_stamp)
@@ -148,7 +153,7 @@ class TransactionManager:
         :return: True or False
         """
         tid = operation.get_tid()
-        self.check_operation_validity(tid)
+        # self.check_operation_validity(tid)
 
         time_stamp = operation.get_time()
         trans = Transaction(tid, time_stamp)
@@ -232,10 +237,10 @@ class TransactionManager:
         :return: True or False
         """
         if not is_retry:
-            self.save_to_transaction()
+            self.save_to_transaction(operation)
 
         tid, vid, value = operation.get_tid(), operation.get_vid(), operation.get_value()
-        self.check_operation_validity(tid)
+        # self.check_operation_validity(tid)
 
         locked_site_list = []
         # Try to lock all sites have given variable
@@ -265,7 +270,8 @@ class TransactionManager:
     def execute_dump(self):
         TABLE_HEADERS = ["Site Name"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]
         rows = [site.print_all_sites() for site in self.sites]
-        IOUtils.print_result(TABLE_HEADERS, rows)
+        # IOUtils.print_result(TABLE_HEADERS, rows)
+        print_result(TABLE_HEADERS, rows)
         return True
 
     def execute_fail(self, operation):
@@ -285,7 +291,7 @@ class TransactionManager:
 
     def execute_end(self, operation, is_retry=False):
         if not is_retry:
-            self.save_to_transaction()
+            self.save_to_transaction(operation)
 
         tid = operation.get_tid()
         self.check_operation_validity(tid)
@@ -326,12 +332,12 @@ class TransactionManager:
         # When transaction commit, we need to remove the transaction in the wait for graph
         self.wait_for_graph.remove_transaction(tid)
 
-        IOUtils.print_commit_result(tid)
-
+        # IOUtils.print_commit_result(tid)
+        print(f"Transaction {tid} commit")
         return True
 
     def check_operation_validity(self, tid):
-        if not self.transactions.get(tid):
+        if tid not in self.transactions:
             raise InvalidOperationError("Transaction {} does not exist".format(tid))
 
     def generate_site_list(self, vid):
@@ -348,10 +354,7 @@ class TransactionManager:
         else:
             s = self.sites
 
-        if len(s) > 1:
-            site_list.extend(self.sites)
-        else:
-            site_list.append(self.sites)
+        site_list.extend(s)
 
         return site_list
 
@@ -368,8 +371,8 @@ class TransactionManager:
         if tid not in self.transactions:
             raise KeyError(f"Try to execute {operation.get_type()} in a non-existing transaction")
 
-        self.transactions[tid].add_operation(self)
-        self.wait_for_graph.add_operation(self)
+        self.transactions[tid].add_operation(operation)
+        self.wait_for_graph.add_operation(operation)
 
     # Read variable from log if the variable was modified by transaction,
     # otherwise read from committed data
@@ -393,3 +396,16 @@ class TransactionManager:
 
         return True
 
+def print_result(headers, rows):
+    """
+    Print the query result using pretty table, only for dump operation now
+
+    :param headers: table headers
+    :param rows: table rows
+    :return: None
+    """
+    table = PrettyTable()
+    table.field_names = headers
+    for row in rows:
+        table.add_row(row)
+    print(table)

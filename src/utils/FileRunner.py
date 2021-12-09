@@ -1,5 +1,15 @@
+import sys
 from src.manager.TransactionManager import TransactionManager
 from src.utils.FileLoader import *
+from model.Site import Site
+
+def init_sites():
+    """
+    Initialize sites and return list of sites
+
+    :return: list of sites
+    """
+    return [Site(idx) for idx in range(1, 10 + 1)]
 
 
 def run(operations):
@@ -10,6 +20,7 @@ def run(operations):
     :return: None
     """
     transaction_manager = TransactionManager()
+    transaction_manager.get_all_sites(init_sites())
 
     time_stamp = 0
     for operation in operations:
@@ -20,10 +31,10 @@ def run(operations):
         time_stamp += 1
         op = transaction_manager.waiting_list.pop(0)
         op.set_time(time_stamp)
-        is_succeed = transaction_manager.retry(op)
+        is_succeed = transaction_manager.retry()
         if not is_succeed:
             op = transaction_manager.waiting_list.pop(0)
-            print(f'The operation {op} failed', op)
+            print(f'The operation {op.get_type()} failed')
 
 
 def run_by_file(input, output):

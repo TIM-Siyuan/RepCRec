@@ -17,10 +17,13 @@ class DataManager:
                 self.data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
 
     def set_variable(self, vid, val):
-        self.data[vid] = val
+        if vid % 2 == NumType.EVEN:
+            self.data[vid] = DataCopy(DataType.REPLICATED, val)
+        else:
+            self.data[vid] = DataCopy(DataType.NONREPLICATED, val)
 
     def set_available(self, vid, availability):
-        self.data[vid].set_read_available(availability)
+        (self.data[vid]).set_read_available(availability)
 
     def is_available(self, vid):
         return self.data[vid].is_read_available()

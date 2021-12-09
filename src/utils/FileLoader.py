@@ -22,7 +22,7 @@ class FileLoader(object):
                 line = (line.split('('))[1]
                 line = line.replace(')', '')
                 line = line[1:]
-                op = operation(OperationType.BEGINRO, int(line), None, None, None, time)
+                op = Operation(OperationType.BEGINRO, int(line), None, None, None, time)
                 self.operations.append(op)
                 time += 1
                 continue
@@ -30,7 +30,7 @@ class FileLoader(object):
                 line = line.split("(")[1]
                 line = line.replace(')', '')
                 line = line[1:]
-                op = operation(OperationType.BEGIN, int(line), None, None, None, time)
+                op = Operation(OperationType.BEGIN, int(line), None, None, None, time)
                 self.operations.append(op)
                 time += 1
                 continue
@@ -40,7 +40,7 @@ class FileLoader(object):
                 values = line.split(",")
                 values[0] = (values[0])[1:]
                 values[1] = (values[1]).split("x")[1]
-                op = operation(OperationType.WRITE, int(values[0]), int(values[1]), int(values[2]), None, time)
+                op = Operation(OperationType.WRITE, int(values[0]), int(values[1]), int(values[2]), None, time)
                 self.operations.append(op)
                 time += 1
                 continue
@@ -50,14 +50,14 @@ class FileLoader(object):
                 values = line.split(",")
                 values[0] = (values[0])[1:]
                 values[1] = (values[1]).split("x")[1]
-                op = operation(OperationType.READ, int(values[0]), int(values[1]), None, None, time)
+                op = Operation(OperationType.READ, int(values[0]), int(values[1]), None, None, time)
                 self.operations.append(op)
                 time += 1
                 continue
             if line.find("fail") != -1:
                 line = line.split("(")[1]
                 line = line.replace(')', '')
-                op = operation(OperationType.FAIL, None, None, None, int(line), time)
+                op = Operation(OperationType.FAIL, None, None, None, int(line), time)
                 self.operations.append(op)
                 time += 1
                 continue
@@ -65,19 +65,19 @@ class FileLoader(object):
                 line = line.split("(")[1]
                 line = line.replace(')', '')
                 line = line[1:]
-                op = operation(OperationType.END, int(line), None, None, None, time)
+                op = Operation(OperationType.END, int(line), None, None, None, time)
                 self.operations.append(op)
                 time += 1
                 continue
             if line.find("recover") != -1:
                 line = line.split("(")[1]
                 line = line.replace(')', '')
-                op = operation(OperationType.RECOVER, None, None, None, int(line), time)
+                op = Operation(OperationType.RECOVER, None, None, None, int(line), time)
                 self.operations.append(op)
                 time += 1
                 continue
             if line.find("dump") != -1:
-                op = operation(OperationType.DUMP, None, None, None, None, time)
+                op = Operation(OperationType.DUMP, None, None, None, None, time)
                 self.operations.append(op)
                 time += 1
                 continue

@@ -16,6 +16,8 @@ class Transaction:
     # def __str__(self):
     #     return f"Identifier: {self.tid} & ReadOnly: {self.is_read_only} & " \
     #            f"Operations: {[str(op) for op in self.operations]}"
+    def is_read_only(self):
+        return self.transaction_type == TransactionType.RO
 
     def set_trans_type(self, trans_type):
         self.transaction_type = trans_type
