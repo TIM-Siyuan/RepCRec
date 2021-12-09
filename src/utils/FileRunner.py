@@ -33,7 +33,7 @@ def run(operations):
         op.set_time(time_stamp)
         is_succeed = transaction_manager.retry()
         if not is_succeed:
-            op = transaction_manager.waiting_list.pop(0)
+            # op = transaction_manager.waiting_list.pop(0)
             print(f'The operation {op.get_type()} failed')
 
 

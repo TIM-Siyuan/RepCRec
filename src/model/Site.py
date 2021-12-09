@@ -60,3 +60,4 @@ class Site:
     def print_all_sites(self):
         prefix = f"Site {self.sid} ({SiteStatus.UP.name if self.status == SiteStatus.UP else SiteStatus.DOWN.name})"
         return [prefix] + [val for val in self.data_manager.data]
+

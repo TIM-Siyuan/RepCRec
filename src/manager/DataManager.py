@@ -6,15 +6,24 @@ class DataManager:
     """
         A class to manage data
     """
+
+    @staticmethod
+    def _init_db(idx):
+        data = {}
+        for i in range(1, num_distinct_variables + 1):
+            if i % 2 == NumType.EVEN:
+                # datacopy = DataCopy(DataType.REPLICATED, num_sites * i)
+                data[i] = DataCopy(DataType.REPLICATED, num_sites * i)
+            if i % 2 == NumType.ODD and i % num_sites + 1 == self.site_id:
+                # data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
+                data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
+        return data
+
     def __init__(self, site_id):
         self.site_id = site_id
         self.uncommitted_log = {}
-        self.data = {}
-        for i in range(1, num_distinct_variables + 1):
-            if i % 2 == NumType.EVEN:
-                self.data[i] = DataCopy(DataType.REPLICATED, num_sites * i)
-            if i % 2 == NumType.ODD and i % num_sites + 1 == self.site_id:
-                self.data[i] = DataCopy(DataType.NONREPLICATED, num_sites * i)
+        self.data = self._init_db(site_id)
+
 
     def set_variable(self, vid, val):
         if vid % 2 == NumType.EVEN:

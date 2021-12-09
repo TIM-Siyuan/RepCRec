@@ -7,6 +7,7 @@ from src.Exception import *
 from src.model.Operation import Operation
 from prettytable import PrettyTable
 
+TABLE_HEADERS = ["Site Name"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]
 
 class TransactionManager:
     """
@@ -268,7 +269,7 @@ class TransactionManager:
         return True
 
     def execute_dump(self):
-        TABLE_HEADERS = ["Site Name"] + [f"x{i}" for i in range(1, num_distinct_variables + 1)]
+
         rows = [site.print_all_sites() for site in self.sites]
         # IOUtils.print_result(TABLE_HEADERS, rows)
         print_result(TABLE_HEADERS, rows)
